@@ -828,6 +828,20 @@ header {
       </div>
 
       <button class="save-btn" onclick="saveSettings()">SALVAR</button>
+
+      <!-- Reset -->
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">
+          Zona de perigo
+        </div>
+        <button onclick="confirmarReset()" style="
+          width:100%; height:48px;
+          background:rgba(255,59,92,0.08); border:1px solid var(--red);
+          border-radius:14px; color:var(--red);
+          font-family:'Outfit',sans-serif; font-size:13px; font-weight:700;
+          cursor:pointer; letter-spacing:0.5px;
+        ">🗑️ RESETAR TODOS OS DADOS</button>
+      </div>
     </div>
 
   </div>
@@ -905,6 +919,53 @@ header {
         font-family:'Outfit', sans-serif; font-size:11px; font-weight:700;
         cursor:pointer; letter-spacing:0.5px;
       ">✓ JÁ ESTOU VOLTANDO</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET CONFIRMAÇÃO -->
+<div id="resetOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.88);
+  backdrop-filter:blur(10px);
+  z-index:400;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#1a0505;
+    border:2px solid var(--red);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(255,59,92,0.3);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  " id="resetCard">
+    <div style="font-size:48px;margin-bottom:12px">🗑️</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:var(--red);letter-spacing:1px;margin-bottom:12px">RESETAR TODOS OS DADOS?</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px;">
+      Isso irá apagar <strong style="color:var(--text)">todo o histórico</strong>, registros do dia e configurações.<br><br>
+      Esta ação <strong style="color:var(--red)">não pode ser desfeita</strong>.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="fecharReset()" style="
+        flex:1; height:48px;
+        background:var(--surface2); border:1px solid var(--border);
+        border-radius:14px; color:var(--muted);
+        font-family:'Outfit',sans-serif; font-size:12px; font-weight:700;
+        cursor:pointer;
+      ">CANCELAR</button>
+      <button onclick="executarReset()" style="
+        flex:2; height:48px;
+        background:rgba(255,59,92,0.2); border:1px solid var(--red);
+        border-radius:14px; color:var(--red);
+        font-family:'Outfit',sans-serif; font-size:12px; font-weight:700;
+        cursor:pointer;
+      ">SIM, RESETAR TUDO</button>
     </div>
   </div>
 </div>
@@ -1327,6 +1388,38 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
+// ── RESET DE FÁBRICA ──
+function confirmarReset() {
+  document.getElementById('settingsModal').classList.remove('open');
+  setTimeout(() => {
+    const overlay = document.getElementById('resetOverlay');
+    const card = document.getElementById('resetCard');
+    overlay.style.opacity = '1';
+    overlay.style.pointerEvents = 'all';
+    card.style.transform = 'scale(1)';
+  }, 300);
+}
+
+function fecharReset() {
+  const overlay = document.getElementById('resetOverlay');
+  const card = document.getElementById('resetCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+}
+
+function executarReset() {
+  // Limpa todo o localStorage
+  localStorage.removeItem('ponto_today');
+  localStorage.removeItem('ponto_history');
+  localStorage.removeItem('ponto_settings');
+
+  fecharReset();
+
+  // Recarrega a página para estado inicial
+  setTimeout(() => location.reload(), 400);
+}
+
 // ── WORKTIME AVISO ──
 function showWorktimeAviso() {
   const overlay = document.getElementById('worktimeOverlay');
@@ -1465,7 +1558,6 @@ function confirmarAlmocoAntecipado() {
   setTimeout(() => showWorktimeAviso(), 2000);
   workerUpdateOnRegister('almoco-ida');
   scheduleReminders('almoco-ida', now);
-  atualizarDrawerAposRegistro();
   renderHistory();
 }
 
@@ -1681,7 +1773,6 @@ function register(type) {
   }
 
   // Atualiza gaveta de registro rápido
-  atualizarDrawerAposRegistro();
 
   // Update history view
   renderHistory();
@@ -2386,106 +2477,10 @@ function init() {
   renderHistory();
 }
 
-// ════════════════════════════════════════════════════
-// MODO COMPACTO — BLOCO ISOLADO
-// Para reverter: remover este bloco JS inteiro
-// e remover o bloco HTML marcado com "MODO COMPACTO"
-// ════════════════════════════════════════════════════
-
-const QUICK_ORDER = [
-  { type: 'entrada',      label: 'Registrar Entrada',      icon: '🟢', color: 'var(--green)',  glow: 'var(--green-glow)'  },
-  { type: 'almoco-ida',   label: 'Registrar Almoço Saída', icon: '🍽️', color: 'var(--orange)', glow: 'var(--orange-glow)' },
-  { type: 'almoco-volta', label: 'Registrar Almoço Volta', icon: '↩️', color: 'var(--accent)', glow: 'var(--accent-glow)' },
-  { type: 'saida',        label: 'Registrar Saída',        icon: '🔴', color: 'var(--red)',    glow: 'var(--red-glow)'    },
-];
-
-let quickDrawerShown = false;
-
-function updateQuickDrawer() {
-  if (todayRecords['saida']) { fecharQuickDrawer(); return; }
-
-  // Descobre próximo registro pendente
-  const pendentes = QUICK_ORDER.filter(q => !todayRecords[q.type]);
-  if (pendentes.length === 0) { fecharQuickDrawer(); return; }
-
-  // Só mostra se já tiver pelo menos uma marcação feita hoje
-  const temRegistro = QUICK_ORDER.some(q => todayRecords[q.type]);
-  if (!temRegistro) { fecharQuickDrawer(); return; }
-
-  // Monta botões dos próximos pendentes (máx 2)
-  const proximos = pendentes.slice(0, 2);
-  document.getElementById('quickButtons').innerHTML = proximos.map(q => `
-    <button onclick="register('${q.type}'); atualizarDrawerAposRegistro();" style="
-      width:100%; height:52px;
-      background:${q.glow}; border:1px solid ${q.color};
-      border-radius:14px; color:${q.color};
-      font-family:'Outfit',sans-serif; font-size:14px; font-weight:700;
-      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
-      transition:all 0.2s;
-    ">
-      <span style="font-size:20px">${q.icon}</span> ${q.label}
-    </button>
-  `).join('');
-
-  // Exibe a gaveta
-  document.getElementById('quickDrawer').style.transform = 'translateX(-50%) translateY(0)';
-  quickDrawerShown = true;
-}
-
-function atualizarDrawerAposRegistro() {
-  setTimeout(() => updateQuickDrawer(), 2500); // aguarda o WorkTime fechar
-}
-
-function fecharQuickDrawer() {
-  document.getElementById('quickDrawer').style.transform = 'translateX(-50%) translateY(100%)';
-  quickDrawerShown = false;
-}
-
-// Mostra gaveta ao reabrir o app se já tiver registro do dia
-function initQuickDrawer() {
-  if (!todayRecords['saida'] && QUICK_ORDER.some(q => todayRecords[q.type])) {
-    setTimeout(() => updateQuickDrawer(), 800);
-  }
-}
-
-// ════════════════════════════════════════════════════
-// FIM DO MODO COMPACTO
-// ════════════════════════════════════════════════════
-
-
 restoreWorker();
 if (todayRecords['saida']) lockAllButtons();
-initQuickDrawer();
 dbg('🚀 App carregado');
 </script>
-<!-- ========================================================
-     MODO COMPACTO — BLOCO ISOLADO
-     Para reverter: remover este bloco HTML inteiro
-     e remover o bloco JS marcado com "MODO COMPACTO"
-     ======================================================== -->
-<div id="quickDrawer" style="
-  position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(100%);
-  width:100%; max-width:430px;
-  background:var(--surface);
-  border-top:2px solid var(--accent);
-  border-radius:24px 24px 0 0;
-  padding:16px 20px 36px;
-  z-index:150;
-  box-shadow:0 -8px 40px rgba(0,0,0,0.5);
-  transition:transform 0.4s cubic-bezier(0.32,0.72,0,1);
-">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-    <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;">REGISTRO RÁPIDO</div>
-    <button onclick="fecharQuickDrawer()" style="
-      background:var(--surface2);border:1px solid var(--border);
-      border-radius:8px;width:28px;height:28px;color:var(--muted);
-      font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-    ">✕</button>
-  </div>
-  <div id="quickButtons" style="display:flex;flex-direction:column;gap:10px;"></div>
-</div>
-<!-- FIM DO MODO COMPACTO HTML -->
-
 <!-- ASSINATURA -->
 <div style="
   text-align:center;
