@@ -7,8 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ponto">
+<meta name="apple-mobile-web-app-title" content="Ponto Digital">
+<meta name="description" content="Controle de ponto digital com registro por voz">
 <title>Ponto Digital</title>
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1446,6 +1448,9 @@ function register(type) {
   if (type === 'saida') {
     setTimeout(() => lockAllButtons(), 1500);
   }
+
+  // Atualiza gaveta de registro rápido
+  atualizarDrawerAposRegistro();
 
   // Update history view
   renderHistory();
