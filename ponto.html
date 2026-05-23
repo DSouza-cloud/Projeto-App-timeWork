@@ -1,0 +1,2231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ponto Digital">
+<meta name="description" content="Controle de ponto digital com registro por voz">
+<title>Ponto Digital</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0f1e;
+  --bg2: #0e1428;
+  --surface: #131929;
+  --surface2: #1a2235;
+  --border: #1e2d45;
+  --text: #e8edf5;
+  --muted: #4a5a78;
+  --accent: #00d4ff;
+  --accent-glow: rgba(0,212,255,0.15);
+  --green: #00ff9d;
+  --green-glow: rgba(0,255,157,0.15);
+  --orange: #ff9500;
+  --orange-glow: rgba(255,149,0,0.15);
+  --red: #ff3b5c;
+  --red-glow: rgba(255,59,92,0.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glow blob */
+body::after {
+  content: '';
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app { position: relative; z-index: 1; }
+
+/* ── HEADER ── */
+header {
+  padding: 52px 24px 20px;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.app-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.clock-display {
+  font-family: 'Outfit', sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.clock-display .seconds {
+  font-size: 24px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.date-display {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-weight: 300;
+  text-transform: capitalize;
+}
+
+.settings-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+.settings-btn:active { background: var(--surface2); color: var(--accent); }
+
+/* ── STATUS BAR ── */
+.status-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.status-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 4px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: all 0.3s;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.status-chip.active {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-glow);
+}
+
+.status-chip.preview {
+  border-color: var(--border);
+  color: var(--muted);
+  background: var(--surface);
+  opacity: 0.7;
+}
+
+.status-chip.done {
+  border-color: var(--border);
+  color: var(--muted);
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.chip-time {
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 2px;
+}
+
+.chip-dot.pulse {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ── MAIN CONTENT ── */
+.main {
+  padding: 14px 20px;
+}
+
+/* Voice button */
+.voice-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 16px;
+}
+
+.voice-ring {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.voice-ring::before, .voice-ring::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.voice-ring::before { inset: -12px; }
+.voice-ring::after { inset: -24px; }
+
+.voice-ring.listening::before {
+  opacity: 0.3;
+  animation: ring-pulse 1.5s infinite;
+}
+.voice-ring.listening::after {
+  opacity: 0.15;
+  animation: ring-pulse 1.5s infinite 0.3s;
+}
+
+@keyframes ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.05); opacity: 0.1; }
+}
+
+.voice-btn {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--accent-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.voice-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(0,212,255,0.2) 0%, transparent 60%);
+}
+
+.voice-btn:active { transform: scale(0.95); }
+
+.voice-btn.listening {
+  border-color: var(--red);
+  background: var(--red-glow);
+  animation: btn-glow 1.5s infinite;
+}
+
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,59,92,0.3); }
+  50% { box-shadow: 0 0 40px rgba(255,59,92,0.6); }
+}
+
+.mic-icon {
+  font-size: 40px;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 1;
+}
+
+.voice-hint {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 400;
+}
+
+.voice-hint strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.transcript-box {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 16px;
+  margin-top: 10px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transcript-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.transcript-text {
+  font-size: 14px;
+  color: var(--text);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Quick action buttons */
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.action-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-btn:active { transform: scale(0.97); }
+
+.action-btn.entrada:active, .action-btn.entrada.flash {
+  border-color: var(--green);
+  background: var(--green-glow);
+}
+.action-btn.almoco-ida:active, .action-btn.almoco-ida.flash {
+  border-color: var(--orange);
+  background: var(--orange-glow);
+}
+.action-btn.almoco-volta:active, .action-btn.almoco-volta.flash {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.action-btn.saida:active, .action-btn.saida.flash {
+  border-color: var(--red);
+  background: var(--red-glow);
+}
+
+.action-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.action-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-icon { font-size: 20px; flex-shrink: 0; }
+.action-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text);
+  line-height: 1.2;
+}
+.action-time {
+  font-family: 'Outfit', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+/* ── HISTORY ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 40px;
+}
+
+.history-day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.history-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.history-day-date {
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.history-day-total {
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.history-day-records {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-record {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.record-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.record-dot.entrada { background: var(--green); }
+.record-dot.almoco-ida { background: var(--orange); }
+.record-dot.almoco-volta { background: var(--accent); }
+.record-dot.saida { background: var(--red); }
+
+.record-type {
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+  flex: 1;
+}
+
+.record-time {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* empty history */
+.history-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ── SETTINGS MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding: 20px 24px 48px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+.modal-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+
+.setting-group {
+  margin-bottom: 20px;
+}
+
+.setting-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.setting-row {
+  display: flex;
+  gap: 10px;
+}
+
+.setting-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+  text-align: center;
+}
+.setting-input:focus { border-color: var(--accent); }
+
+.setting-sep {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.save-btn {
+  width: 100%;
+  height: 52px;
+  background: var(--accent);
+  border: none;
+  border-radius: 14px;
+  color: var(--bg);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+.save-btn:active { opacity: 0.8; transform: scale(0.98); }
+
+/* Notification banner */
+.notif-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 14px 20px;
+  max-width: 340px;
+  width: calc(100% - 48px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,212,255,0.1);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.notif-banner.show { transform: translateX(-50%) translateY(0); }
+
+.notif-icon { font-size: 24px; flex-shrink: 0; }
+.notif-text { flex: 1; }
+.notif-title { font-weight: 600; font-size: 14px; }
+.notif-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+@keyframes worktimePulse {
+  0%, 100% { box-shadow: 0 0 40px rgba(255,149,0,0.3); }
+  50% { box-shadow: 0 0 80px rgba(255,149,0,0.6); }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-row">
+      <div>
+        <div class="app-name">◈ Ponto Digital</div>
+        <div class="clock-display" id="clockDisplay">
+          <span id="clockHM">00:00</span><span class="seconds" id="clockS">:00</span>
+        </div>
+        <div class="date-display" id="dateDisplay">—</div>
+      </div>
+
+      <button class="settings-btn" onclick="openSettings()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;font-size:14px;">⚙</button>
+
+      <!-- CONTADOR CIRCULAR -->
+      <div style="margin-top:4px;">
+        <div style="position:relative;width:72px;height:72px;">
+          <svg width="72" height="72" style="transform:rotate(-90deg);position:absolute;inset:0;">
+            <!-- Trilha base -->
+            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--border)" stroke-width="4"/>
+            <!-- Anel jornada normal -->
+            <circle id="workerRing" cx="36" cy="36" r="30" fill="none"
+              stroke="var(--accent)" stroke-width="4"
+              stroke-dasharray="188.5" stroke-dashoffset="188.5"
+              stroke-linecap="round"
+              style="transition:stroke-dashoffset 1s linear, stroke 0.5s"/>
+            <!-- Anel horas extras (externo) -->
+            <circle cx="36" cy="36" r="22" fill="none" stroke="transparent" stroke-width="5"/>
+            <circle id="extraRing" cx="36" cy="36" r="22" fill="none"
+              stroke="var(--red)" stroke-width="5"
+              stroke-dasharray="138.2" stroke-dashoffset="138.2"
+              stroke-linecap="round"
+              style="transition:stroke-dashoffset 1s linear; filter:drop-shadow(0 0 4px rgba(255,59,92,0.8)); display:none;"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div id="workerTime" style="font-family:'Outfit', sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1;">00:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- STATUS CHIPS -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-chip" id="chip-entrada">
+      <span class="chip-dot"></span> Entrada
+    </div>
+    <div class="status-chip" id="chip-almoco-ida">
+      <span class="chip-dot"></span> Almoço Saída
+    </div>
+    <div class="status-chip" id="chip-almoco-volta">
+      <span class="chip-dot"></span> Almoço Volta
+    </div>
+    <div class="status-chip" id="chip-saida">
+      <span class="chip-dot"></span> Saída
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- Voice button -->
+    <div class="voice-section">
+      <div class="voice-ring" id="voiceRing">
+        <button class="voice-btn" id="voiceBtn" onclick="toggleListen()">
+          <span class="mic-icon" id="micIcon">🎙️</span>
+        </button>
+      </div>
+      <div class="voice-hint" id="voiceHint">
+        Toque e fale: <strong>"entrada"</strong>, <strong>"almoço ida"</strong>,<br>
+        <strong>"almoço volta"</strong> ou <strong>"saída"</strong>
+      </div>
+      <div class="transcript-box" id="transcriptBox">
+        <span class="transcript-label">Ouvindo</span>
+        <span class="transcript-text" id="transcriptText">—</span>
+      </div>
+
+      <!-- ⚠️ BOTÃO DE TESTE — REMOVER APÓS OS TESTES -->
+      <button id="ffBtn"
+        onpointerdown="startFastForward()"
+        onpointerup="stopFastForward()"
+        onpointerleave="stopFastForward()"
+        style="
+          width:100%; margin-top:10px; height:44px;
+          background:rgba(0,212,255,0.08); border:1px solid var(--border);
+          border-radius:12px; color:var(--accent);
+          font-family:'Outfit', sans-serif; font-size:11px; font-weight:700;
+          cursor:pointer; letter-spacing:1px; transition:all 0.2s;
+        ">⏩ TOQUE PARA ADIANTAR +15 MIN [TESTE]</button>
+      <!-- ⚠️ FIM DO BOTÃO DE TESTE -->
+    </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="quick-actions">
+      <button class="action-btn entrada" id="btn-entrada" onclick="register('entrada')">
+        <div class="action-header">
+          <span class="action-icon">🟢</span>
+          <span class="action-label">ENTRADA</span>
+        </div>
+        <span class="action-time" id="time-entrada">—</span>
+      </button>
+      <button class="action-btn almoco-ida" id="btn-almoco-ida" onclick="register('almoco-ida')">
+        <div class="action-header">
+          <span class="action-icon">🍽️</span>
+          <span class="action-label">ALMOÇO IDA</span>
+        </div>
+        <span class="action-time" id="time-almoco-ida">—</span>
+      </button>
+      <button class="action-btn almoco-volta" id="btn-almoco-volta" onclick="register('almoco-volta')">
+        <div class="action-header">
+          <span class="action-icon">↩️</span>
+          <span class="action-label">ALMOÇO VOLTA</span>
+        </div>
+        <span class="action-time" id="time-almoco-volta">—</span>
+      </button>
+      <button class="action-btn saida" id="btn-saida" onclick="register('saida')">
+        <div class="action-header">
+          <span class="action-icon">🔴</span>
+          <span class="action-label">SAÍDA</span>
+        </div>
+        <span class="action-time" id="time-saida">—</span>
+      </button>
+    </div>
+
+    <!-- History -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="section-title" style="margin-bottom:0">◈ Histórico</div>
+      <div id="monthTabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;"></div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">Nenhum registro ainda.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal" onclick="closeSettingsOutside(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">// CONFIGURAÇÕES</div>
+
+    <div class="setting-group">
+      <div class="setting-label">Jornada diária (horas)</div>
+      <div class="setting-row">
+        <input class="setting-input" id="settingJornada" type="number" value="8" min="1" max="12">
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">Intervalo de almoço (minutos)</div>
+      <div class="setting-row">
+        <input class="setting-input" id="settingAlmoco" type="number" value="60" min="15" max="180">
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="saveSettings()">SALVAR</button>
+  </div>
+</div>
+
+<!-- NOTIFICATION BANNER -->
+<div class="notif-banner" id="notifBanner">
+  <span class="notif-icon" id="notifIcon">⏰</span>
+  <div class="notif-text">
+    <div class="notif-title" id="notifTitle">Lembrete</div>
+    <div class="notif-sub" id="notifSub"></div>
+  </div>
+</div>
+
+<!-- ALMOÇO ALERT MODAL -->
+<div id="almocoBanner" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(10px);
+  z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#1a0f00;
+    border:2px solid var(--orange);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(255,149,0,0.35);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    animation: worktimePulse 1.5s infinite;
+  " id="almocoAlertCard">
+    <div style="font-size:48px;margin-bottom:12px">🍽️</div>
+    <div style="font-family:'Outfit', sans-serif;font-size:13px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:8px">HORA DE VOLTAR!</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5">
+      Seu intervalo de almoço terminou.<br>Registre o retorno agora.
+    </div>
+
+    <div style="position:relative;width:140px;height:140px;margin:0 auto 20px;">
+      <svg width="140" height="140" style="transform:rotate(-90deg)">
+        <circle cx="70" cy="70" r="60" fill="none" stroke="#1e2d45" stroke-width="8"/>
+        <circle id="almocoAlertRing" cx="70" cy="70" r="60" fill="none"
+          stroke="var(--orange)" stroke-width="8"
+          stroke-dasharray="377" stroke-dashoffset="377"
+          stroke-linecap="round"
+          style="transition:stroke-dashoffset 1s linear"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <div id="almocoSubText" style="font-family:'Outfit', sans-serif;font-size:28px;font-weight:700;color:var(--text);line-height:1">00:00</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:4px">EM ATRASO</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px">
+      ou fale <strong style="color:var(--text)">"extra"</strong> para prorrogar +10 minutos
+    </div>
+
+    <div style="display:flex;gap:10px;">
+      <button onclick="prorrogarAlmoco()" style="
+        flex:1; height:48px;
+        background:rgba(255,149,0,0.15); border:1px solid var(--orange);
+        border-radius:14px; color:var(--orange);
+        font-family:'Outfit', sans-serif; font-size:11px; font-weight:700;
+        cursor:pointer; letter-spacing:0.5px;
+      ">＋10 MIN</button>
+      <button onclick="fecharAlmocoBanner()" style="
+        flex:2; height:48px;
+        background:var(--green-glow); border:1px solid var(--green);
+        border-radius:14px; color:var(--green);
+        font-family:'Outfit', sans-serif; font-size:11px; font-weight:700;
+        cursor:pointer; letter-spacing:0.5px;
+      ">✓ JÁ ESTOU VOLTANDO</button>
+    </div>
+  </div>
+</div>
+
+<!-- WORKTIME AVISO -->
+<div id="worktimeOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.82);
+  backdrop-filter:blur(10px);
+  z-index:400;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#1a1200;
+    border:2px solid var(--orange);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 80px rgba(255,149,0,0.35);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    animation: worktimePulse 1.5s infinite;
+  " id="worktimeCard">
+    <div style="font-size:52px;margin-bottom:16px">⚠️</div>
+    <div style="font-family:'Outfit', sans-serif;font-size:12px;font-weight:700;color:var(--orange);letter-spacing:2px;margin-bottom:16px">ATENÇÃO!</div>
+    <div style="font-family:'Outfit', sans-serif;font-size:20px;font-weight:700;color:#fff;line-height:1.4;margin-bottom:24px">
+      Não esqueça de registrar<br>imediatamente no<br>
+      <span style="color:var(--orange);font-size:26px;letter-spacing:1px">WorkTime!!!</span>
+    </div>
+    <button onclick="fecharWorktime()" style="
+      width:100%; height:52px;
+      background:var(--orange); border:none;
+      border-radius:14px; color:#000;
+      font-family:'Outfit', sans-serif; font-size:13px; font-weight:700;
+      cursor:pointer; letter-spacing:1px;
+    ">JÁ REGISTREI ✓</button>
+  </div>
+</div>
+
+<!-- SAÍDA ANTECIPADA -->
+<div id="saidaAntecipadadOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(10px);
+  z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#1a0a0a;
+    border:2px solid var(--red);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(255,59,92,0.3);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  " id="saidaAntecipadaCard">
+    <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+    <div style="font-family:'Outfit', sans-serif;font-size:13px;font-weight:700;color:var(--red);letter-spacing:1px;margin-bottom:10px">SAÍDA ANTECIPADA</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px">
+      Você ainda não completou sua jornada.<br>Faltam:
+    </div>
+    <div id="saidaFaltaStr" style="font-family:'Outfit', sans-serif;font-size:32px;font-weight:700;color:var(--red);margin-bottom:8px;">--</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px">
+      Seu banco de horas ficará <strong style="color:var(--red)">negativo</strong>.<br>Deseja registrar mesmo assim?
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="fecharSaidaAntecipada()" style="
+        flex:1; height:48px;
+        background:var(--surface2); border:1px solid var(--border);
+        border-radius:14px; color:var(--muted);
+        font-family:'Outfit', sans-serif; font-size:11px; font-weight:700;
+        cursor:pointer; letter-spacing:0.5px;
+      ">CANCELAR</button>
+      <button onclick="confirmarSaidaAntecipada()" style="
+        flex:2; height:48px;
+        background:rgba(255,59,92,0.15); border:1px solid var(--red);
+        border-radius:14px; color:var(--red);
+        font-family:'Outfit', sans-serif; font-size:11px; font-weight:700;
+        cursor:pointer; letter-spacing:0.5px;
+      ">SIM, REGISTRAR SAÍDA</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPEDIENTE ENCERRADO -->
+<div id="expedienteOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.88);
+  backdrop-filter:blur(12px);
+  z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#131929;
+    border:2px solid var(--accent);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(0,212,255,0.2);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  " id="expedienteCard">
+    <div style="font-size:52px;margin-bottom:16px">🌙</div>
+    <div style="font-family:'Outfit', sans-serif;font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:10px">EXPEDIENTE ENCERRADO</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:8px">
+      Você já registrou sua saída hoje às
+    </div>
+    <div id="expedienteSaidaTime" style="font-family:'Outfit', sans-serif;font-size:32px;font-weight:700;color:var(--text);margin-bottom:8px">--:--</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px">
+      A próxima marcação estará disponível<br>no próximo expediente. Bom descanso! 😴
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:20px;">
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px">RESUMO DO DIA</div>
+      <div id="expedienteResumo" style="font-family:'Outfit', sans-serif;font-size:13px;color:var(--text);line-height:1.8;"></div>
+    </div>
+
+    <button onclick="fecharExpediente()" style="
+      width:100%; height:48px;
+      background:var(--accent-glow); border:1px solid var(--accent);
+      border-radius:14px; color:var(--accent);
+      font-family:'Outfit', sans-serif; font-size:12px; font-weight:700;
+      cursor:pointer; letter-spacing:0.5px;
+    ">ENTENDIDO ✓</button>
+  </div>
+</div>
+
+<!-- BLOQUEIO RETORNO ANTECIPADO -->
+<div id="bloqueioOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(10px);
+  z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#131929;
+    border:2px solid var(--red);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(255,59,92,0.3);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  " id="bloqueioCard">
+    <div style="font-size:48px;margin-bottom:12px">⛔</div>
+    <div style="font-family:'Outfit', sans-serif;font-size:13px;font-weight:700;color:var(--red);letter-spacing:1px;margin-bottom:8px">RETORNO BLOQUEADO</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5">
+      Seu intervalo de almoço ainda não terminou.<br>Aguarde para registrar o retorno.
+    </div>
+
+    <!-- Countdown ring -->
+    <div style="position:relative;width:140px;height:140px;margin:0 auto 20px;">
+      <svg width="140" height="140" style="transform:rotate(-90deg)">
+        <circle cx="70" cy="70" r="60" fill="none" stroke="#1e2d45" stroke-width="8"/>
+        <circle id="bloqueioRing" cx="70" cy="70" r="60" fill="none"
+          stroke="var(--red)" stroke-width="8"
+          stroke-dasharray="377" stroke-dashoffset="0"
+          stroke-linecap="round"
+          style="transition:stroke-dashoffset 1s linear"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <div id="bloqueioCountdown" style="font-family:'Outfit', sans-serif;font-size:28px;font-weight:700;color:var(--text);line-height:1">--:--</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:4px">RESTANTE</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px">
+      Retorno liberado às <strong id="bloqueioHorario" style="color:var(--text)">--:--</strong>
+    </div>
+
+    <button onclick="fecharBloqueio()" style="
+      width:100%; height:48px;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:14px; color:var(--muted);
+      font-family:'Outfit', sans-serif; font-size:12px; font-weight:700;
+      cursor:pointer; letter-spacing:0.5px;
+    ">ENTENDIDO</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let settings = JSON.parse(localStorage.getItem('ponto_settings') || '{"jornada":8,"almoco":60}');
+let todayRecords = JSON.parse(localStorage.getItem('ponto_today') || '{}');
+let history = JSON.parse(localStorage.getItem('ponto_history') || '[]');
+let listening = false;
+let recognition = null;
+let reminderTimers = [];
+let bloqueioInterval = null;
+let bloqueioTotalMs = 0;
+
+const todayKey = () => new Date().toLocaleDateString('pt-BR');
+
+// Check if stored today is actually today
+if (todayRecords._date !== todayKey()) {
+  // Save previous day if has records
+  if (todayRecords._date && Object.keys(todayRecords).filter(k => k !== '_date').length > 0) {
+    const prev = { ...todayRecords };
+    delete prev._date;
+    history.unshift({ date: todayRecords._date, records: prev });
+    if (history.length > 30) history = history.slice(0, 30);
+    localStorage.setItem('ponto_history', JSON.stringify(history));
+  }
+  todayRecords = { _date: todayKey() };
+  localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
+}
+
+// ── GETNOW — retorna o tempo atual (com offset de teste quando ativo) ──
+// Para remover o modo teste: apagar o bloco "MODO TESTE" abaixo
+// e substituir esta função por: function getNow() { return new Date(); }
+function getNow() {
+  return new Date(Date.now() + (window._testOffset || 0));
+}
+
+// ── MODO TESTE — REMOVER ESTE BLOCO INTEIRO APÓS OS TESTES ──
+window._testOffset = 0;
+
+function startFastForward() {
+  window._testOffset += 15 * 60 * 1000;
+  recheckTimers();
+  const total = Math.round(window._testOffset / 60000);
+  const btn = document.getElementById('ffBtn');
+  btn.style.background = 'rgba(255,149,0,0.3)';
+  btn.style.borderColor = 'var(--orange)';
+  btn.textContent = `⏩ +${total}min adiantado`;
+  setTimeout(() => {
+    btn.style.background = 'rgba(0,212,255,0.08)';
+    btn.style.borderColor = 'var(--border)';
+  }, 300);
+  dbg('⏩ +15min — total: +' + total + 'min');
+}
+
+function stopFastForward() {}
+
+function recheckTimers() {
+  const almocoMs = settings.almoco * 60 * 1000;
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+  const now = getNow();
+
+  if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) {
+    const fimAlmoco = new Date(parseTime(todayRecords['almoco-ida']).getTime() + almocoMs);
+    if (now >= fimAlmoco && !almocoBannerOpen) {
+      if (timerAlmoco) { clearTimeout(timerAlmoco); timerAlmoco = null; }
+      showAlmocoBanner();
+      playAlertSound();
+      dbg('⏩ Alerta almoço disparado');
+    }
+  }
+
+  if (todayRecords['entrada'] && !todayRecords['saida']) {
+    let exitTime;
+    if (todayRecords['almoco-volta']) {
+      const trabalhado = parseTime(todayRecords['almoco-ida']) - parseTime(todayRecords['entrada']);
+      exitTime = new Date(parseTime(todayRecords['almoco-volta']).getTime() + (jornadaMs - trabalhado));
+    } else {
+      exitTime = new Date(parseTime(todayRecords['entrada']).getTime() + jornadaMs + almocoMs);
+    }
+    if (now >= exitTime) {
+      if (timerJornada) { clearTimeout(timerJornada); timerJornada = null; }
+      if (timerHoraExtra) { clearTimeout(timerHoraExtra); timerHoraExtra = null; }
+      const timeStr = exitTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      showBanner('🚀', 'Hora de ir embora!', 'Jornada completa às ' + timeStr);
+      dbg('⏩ Alerta jornada disparado');
+    }
+  }
+}
+// ── FIM DO MODO TESTE ──
+
+// ── CLOCK ──
+function updateClock() {
+  const now = getNow();
+  const hm = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const s = ':' + String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clockHM').textContent = hm;
+  document.getElementById('clockS').textContent = s;
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('pt-BR', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── WORKTIME AVISO ──
+function showWorktimeAviso() {
+  const overlay = document.getElementById('worktimeOverlay');
+  const card = document.getElementById('worktimeCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+  playAlertSound();
+  dbg('⚠️ Aviso WorkTime exibido');
+}
+
+function fecharWorktime() {
+  const overlay = document.getElementById('worktimeOverlay');
+  const card = document.getElementById('worktimeCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+}
+
+// ── SAÍDA ANTECIPADA ──
+function showSaidaAntecipada(faltaStr) {
+  document.getElementById('saidaFaltaStr').textContent = faltaStr;
+  const overlay = document.getElementById('saidaAntecipadadOverlay');
+  const card = document.getElementById('saidaAntecipadaCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+  playBlockSound();
+  dbg('⚠️ Confirmação de saída antecipada — faltam ' + faltaStr);
+}
+
+function fecharSaidaAntecipada() {
+  const overlay = document.getElementById('saidaAntecipadadOverlay');
+  const card = document.getElementById('saidaAntecipadaCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+}
+
+function confirmarSaidaAntecipada() {
+  fecharSaidaAntecipada();
+  // Força o registro de saída pulando a validação
+  const now = getNow();
+  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  todayRecords['saida'] = timeStr;
+  localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
+  document.getElementById('time-saida').textContent = timeStr;
+  const chip = document.getElementById('chip-saida');
+  chip.className = 'status-chip active';
+  chip.innerHTML = `<span class="chip-dot pulse"></span><span>Saída</span><span class="chip-time">${timeStr}</span>`;
+  showBanner('🔴', 'Saída registrada!', timeStr);
+  setTimeout(() => showWorktimeAviso(), 2000);
+  workerUpdateOnRegister('saida');
+  setTimeout(() => lockAllButtons(), 1500);
+  renderHistory();
+  dbg('🔴 Saída antecipada confirmada às ' + timeStr);
+}
+
+// ── EXPEDIENTE ENCERRADO ──
+function showExpedienteEncerrado() {
+  const overlay = document.getElementById('expedienteOverlay');
+  const card = document.getElementById('expedienteCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+
+  document.getElementById('expedienteSaidaTime').textContent = todayRecords['saida'] || '--:--';
+
+  // Resumo do dia
+  const LABELS = { 'entrada': 'Entrada', 'almoco-ida': 'Almoço Saída', 'almoco-volta': 'Almoço Volta', 'saida': 'Saída' };
+  const resumo = ['entrada','almoco-ida','almoco-volta','saida']
+    .filter(k => todayRecords[k])
+    .map(k => `<span style="color:var(--muted)">${LABELS[k]}:</span> <strong>${todayRecords[k]}</strong>`)
+    .join('<br>');
+  document.getElementById('expedienteResumo').innerHTML = resumo;
+
+  playBlockSound();
+  dbg('🌙 Expediente encerrado — bloqueio ativado');
+}
+
+function fecharExpediente() {
+  const overlay = document.getElementById('expedienteOverlay');
+  const card = document.getElementById('expedienteCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+}
+
+function lockAllButtons() {
+  ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
+    const btn = document.getElementById('btn-' + type);
+    if (!todayRecords[type]) {
+      btn.style.opacity = '0.25';
+      btn.style.filter = 'grayscale(1)';
+      btn.style.cursor = 'not-allowed';
+    }
+  });
+  // Bloquear microfone de registrar
+  document.getElementById('voiceHint').innerHTML =
+    '<strong style="color:var(--muted)">🌙 Expediente encerrado</strong><br>Próxima marcação amanhã';
+}
+
+// ── BLOQUEIO ALMOÇO ──
+function showBloqueioAlmoco(restanteMs, fimAlmoco) {
+  bloqueioTotalMs = restanteMs;
+  const overlay = document.getElementById('bloqueioOverlay');
+  const card = document.getElementById('bloqueioCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+
+  const timeStr = fimAlmoco.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('bloqueioHorario').textContent = timeStr;
+
+  playBlockSound();
+  dbg('⛔ Retorno bloqueado — falta ' + Math.ceil(restanteMs / 60000) + ' min');
+
+  // Start countdown
+  if (bloqueioInterval) clearInterval(bloqueioInterval);
+  updateBloqueioCountdown(restanteMs);
+  bloqueioInterval = setInterval(() => {
+    restanteMs -= 1000;
+    if (restanteMs <= 0) {
+      clearInterval(bloqueioInterval);
+      fecharBloqueio();
+      showBanner('✅', 'Retorno liberado!', 'Agora você pode registrar o retorno.');
+      return;
+    }
+    updateBloqueioCountdown(restanteMs);
+  }, 1000);
+}
+
+function updateBloqueioCountdown(ms) {
+  const min = Math.floor(ms / 60000);
+  const sec = Math.floor((ms % 60000) / 1000);
+  document.getElementById('bloqueioCountdown').textContent =
+    String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+
+  // Update ring (circumference = 377)
+  const progress = ms / bloqueioTotalMs;
+  const offset = 377 * (1 - progress);
+  document.getElementById('bloqueioRing').style.strokeDashoffset = offset;
+
+  // Color shifts red → orange → green as time passes
+  const hue = Math.round(progress * 0 + (1 - progress) * 120); // red to green
+  document.getElementById('bloqueioRing').style.stroke =
+    progress > 0.5 ? 'var(--red)' : progress > 0.2 ? 'var(--orange)' : 'var(--green)';
+}
+
+function fecharBloqueio() {
+  const overlay = document.getElementById('bloqueioOverlay');
+  const card = document.getElementById('bloqueioCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+  if (bloqueioInterval) { clearInterval(bloqueioInterval); bloqueioInterval = null; }
+}
+
+function playBlockSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 220;
+    osc.type = 'sawtooth';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+}
+
+// ── REGISTER ──
+const TYPES = {
+  'entrada':      { label: 'Entrada',      chip: 'chip-entrada',      icon: '🟢' },
+  'almoco-ida':   { label: 'Almoço Saída', chip: 'chip-almoco-ida',   icon: '🍽️' },
+  'almoco-volta': { label: 'Almoço Volta', chip: 'chip-almoco-volta',  icon: '↩️' },
+  'saida':        { label: 'Saída',        chip: 'chip-saida',        icon: '🔴' },
+};
+
+function register(type) {
+  // Bloquear se expediente já encerrado (saída registrada)
+  if (todayRecords['saida']) {
+    showExpedienteEncerrado();
+    return;
+  }
+  if (todayRecords[type]) {
+    const timeStr = todayRecords[type];
+    showBanner('🔒', TYPES[type].label + ' já registrada!', 'Registrada às ' + timeStr + ' — não é possível repetir.');
+    playBlockSound();
+    const btn = document.getElementById('btn-' + type);
+    btn.style.transition = 'all 0.1s';
+    btn.style.transform = 'scale(0.95)';
+    btn.style.borderColor = 'var(--red)';
+    setTimeout(() => {
+      btn.style.transform = '';
+      btn.style.borderColor = '';
+    }, 600);
+    dbg('🔒 Tentativa duplicada: ' + type + ' (já registrado às ' + timeStr + ')');
+    return;
+  }
+
+  // Bloquear retorno antecipado do almoço
+  if (type === 'almoco-volta' && todayRecords['almoco-ida']) {
+    const idaTime = parseTime(todayRecords['almoco-ida']);
+    const almocoMs = settings.almoco * 60 * 1000;
+    const fimAlmoco = new Date(idaTime.getTime() + almocoMs);
+    const agora = getNow();
+    const restante = fimAlmoco - agora;
+    if (restante > 0) {
+      showBloqueioAlmoco(restante, fimAlmoco);
+      return;
+    }
+  }
+
+  // Confirmação de saída antecipada
+  if (type === 'saida' && todayRecords['entrada']) {
+    const jornadaMs = settings.jornada * 60 * 60 * 1000;
+    let workedMs = getNow() - parseTime(todayRecords['entrada']);
+    if (todayRecords['almoco-ida'] && todayRecords['almoco-volta']) {
+      workedMs -= parseTime(todayRecords['almoco-volta']) - parseTime(todayRecords['almoco-ida']);
+    } else if (todayRecords['almoco-ida']) {
+      workedMs -= getNow() - parseTime(todayRecords['almoco-ida']);
+    }
+    const faltaMs = jornadaMs - workedMs;
+    if (faltaMs > 10 * 60 * 1000) { // alerta só se faltar mais de 10min (tolerância)
+      const faltaMin = Math.floor(faltaMs / 60000);
+      const faltaH = Math.floor(faltaMin / 60);
+      const faltaM = faltaMin % 60;
+      const faltaStr = faltaH > 0 ? `${faltaH}h${String(faltaM).padStart(2,'0')}min` : `${faltaMin}min`;
+      showSaidaAntecipada(faltaStr);
+      return;
+    }
+  }
+
+  const now = getNow();
+  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  todayRecords[type] = timeStr;
+  localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
+
+  // Flash button
+  const btn = document.getElementById('btn-' + type);
+  btn.classList.add('flash');
+  document.getElementById('time-' + type).textContent = timeStr;
+
+  // Update chip
+  const chip = document.getElementById(TYPES[type].chip);
+  chip.className = 'status-chip active';
+  chip.innerHTML = `<span class="chip-dot pulse"></span><span>${TYPES[type].label}</span><span class="chip-time">${timeStr}</span>`;
+
+  // Show banner
+  showBanner(TYPES[type].icon, TYPES[type].label + ' registrada!', timeStr);
+
+  // Atualiza chips de prévia
+  updatePreviewChips(type, timeStr);
+
+  // Aviso WorkTime
+  setTimeout(() => showWorktimeAviso(), 2000);
+
+  // Atualiza contador de horas
+  workerUpdateOnRegister(type);
+
+  // Schedule reminders
+  scheduleReminders(type, now);
+
+  // Bloquear tudo após saída
+  if (type === 'saida') {
+    setTimeout(() => lockAllButtons(), 1500);
+  }
+
+  // Atualiza gaveta de registro rápido
+  atualizarDrawerAposRegistro();
+
+  // Update history view
+  renderHistory();
+
+  setTimeout(() => btn.classList.remove('flash'), 600);
+}
+
+// ── REMINDERS ──
+let timerAlmoco = null;
+let timerJornada = null;
+let timerHoraExtra = null;
+
+function scheduleReminders(type, fromTime) {
+  const almocoMs = settings.almoco * 60 * 1000;
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+  const avisoExtraMs = 10 * 60 * 1000; // aviso 10 min antes das horas extras
+
+  if (type === 'almoco-ida') {
+    if (timerAlmoco) clearTimeout(timerAlmoco);
+    const fimAlmoco = new Date(fromTime.getTime() + almocoMs);
+    const ms = fimAlmoco - getNow();
+    dbg('⏱️ Timer almoço: ' + Math.round(ms/1000) + 's até ' + fimAlmoco.toLocaleTimeString('pt-BR'));
+    if (ms > 0) {
+      timerAlmoco = setTimeout(() => {
+        showAlmocoBanner();
+        playAlertSound();
+        sendNativeNotif('🍽️ Almoço acabando!', 'Hora de voltar ao trabalho!');
+        dbg('🍽️ Alerta de almoço disparado!');
+      }, ms);
+    }
+  }
+
+  if (type === 'entrada') {
+    if (timerJornada) clearTimeout(timerJornada);
+    if (timerHoraExtra) clearTimeout(timerHoraExtra);
+    const fimJornada = new Date(fromTime.getTime() + jornadaMs + almocoMs);
+    const msJornada = fimJornada - getNow();
+    dbg('⏱️ Timer jornada: ' + Math.round(msJornada/60000) + 'min até ' + fimJornada.toLocaleTimeString('pt-BR'));
+    if (msJornada > 0) {
+      timerJornada = setTimeout(() => {
+        const timeStr = fimJornada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        showBanner('🚀', 'Hora de ir embora!', 'Jornada completa às ' + timeStr);
+        sendNativeNotif('🚀 Hora de ir embora!', 'Jornada completa às ' + timeStr);
+        dbg('🚀 Alerta de fim de jornada disparado!');
+        // Agenda aviso de horas extras para 10 min depois
+        timerHoraExtra = setTimeout(() => {
+          showBanner('🔴', 'Você está em horas extras!!', 'Registre sua saída o quanto antes');
+          playAlertSound();
+          sendNativeNotif('🔴 Horas extras!', 'Você ultrapassou sua jornada em 10 minutos.');
+          dbg('🔴 Horas extras iniciadas');
+        }, avisoExtraMs);
+      }, msJornada);
+    }
+  }
+
+  if (type === 'almoco-volta' && todayRecords['entrada']) {
+    if (timerJornada) clearTimeout(timerJornada);
+    if (timerHoraExtra) clearTimeout(timerHoraExtra);
+    const entradaTime = parseTime(todayRecords['entrada']);
+    let workedMs = 0;
+    if (todayRecords['almoco-ida']) {
+      workedMs = parseTime(todayRecords['almoco-ida']) - entradaTime;
+    }
+    const remaining = jornadaMs - workedMs;
+    const exitTime = new Date(fromTime.getTime() + remaining);
+    const msJornada = exitTime - getNow();
+    dbg('⏱️ Timer jornada recalculado: ' + Math.round(msJornada/60000) + 'min até ' + exitTime.toLocaleTimeString('pt-BR'));
+    if (msJornada > 0) {
+      timerJornada = setTimeout(() => {
+        const timeStr = exitTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        showBanner('🚀', 'Hora de ir embora!', 'Jornada completa às ' + timeStr);
+        sendNativeNotif('🚀 Hora de ir embora!', 'Jornada completa às ' + timeStr);
+        dbg('🚀 Alerta de fim de jornada disparado!');
+        // Agenda aviso de horas extras para 10 min depois
+        timerHoraExtra = setTimeout(() => {
+          showBanner('🔴', 'Você está em horas extras!!', 'Registre sua saída o quanto antes');
+          playAlertSound();
+          sendNativeNotif('🔴 Horas extras!', 'Você ultrapassou sua jornada em 10 minutos.');
+          dbg('🔴 Horas extras iniciadas');
+        }, avisoExtraMs);
+      }, msJornada);
+    }
+  }
+}
+
+// Restaura timers ao recarregar a página
+function restoreTimers() {
+  const almocoMs = settings.almoco * 60 * 1000;
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+
+  if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) {
+    const idaTime = parseTime(todayRecords['almoco-ida']);
+    scheduleReminders('almoco-ida', idaTime);
+    dbg('♻️ Timer de almoço restaurado');
+  }
+
+  if (todayRecords['almoco-volta']) {
+    const voltaTime = parseTime(todayRecords['almoco-volta']);
+    scheduleReminders('almoco-volta', voltaTime);
+    dbg('♻️ Timer de jornada restaurado (pós-almoço)');
+  } else if (todayRecords['entrada'] && !todayRecords['saida']) {
+    const entradaTime = parseTime(todayRecords['entrada']);
+    scheduleReminders('entrada', entradaTime);
+    dbg('♻️ Timer de jornada restaurado (entrada)');
+  }
+}
+
+function parseTime(str) {
+  const [h, m] = str.split(':').map(Number);
+  const d = getNow();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+// ── NATIVE NOTIFICATIONS ──
+async function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+requestNotifPermission();
+
+function sendNativeNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '⏰' });
+  }
+}
+
+// ── ALMOÇO ALERT MODAL ──
+let almocoBannerOpen = false;
+let almocoAtrasoInterval = null;
+let almocoAtrasoStart = null;
+
+function showAlmocoBanner() {
+  const overlay = document.getElementById('almocoBanner');
+  const card = document.getElementById('almocoAlertCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+  almocoBannerOpen = true;
+  almocoAtrasoStart = getNow().getTime();
+
+  // Contador de atraso — conta quanto tempo passou desde que deveria ter voltado
+  if (almocoAtrasoInterval) clearInterval(almocoAtrasoInterval);
+  almocoAtrasoInterval = setInterval(() => {
+    const atraso = getNow().getTime() - almocoAtrasoStart;
+    const min = Math.floor(atraso / 60000);
+    const sec = Math.floor((atraso % 60000) / 1000);
+    document.getElementById('almocoSubText').textContent =
+      String(min).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+    // Anel cresce com o atraso (base: 10 min = 377)
+    const maxAtraso = 10 * 60 * 1000;
+    const progress = Math.min(atraso / maxAtraso, 1);
+    document.getElementById('almocoAlertRing').style.strokeDashoffset = 377 * (1 - progress);
+    document.getElementById('almocoAlertRing').style.stroke =
+      progress < 0.5 ? 'var(--orange)' : 'var(--red)';
+  }, 1000);
+
+  dbg('🍽️ Modal de almoço exibido');
+}
+
+function fecharAlmocoBanner() {
+  const overlay = document.getElementById('almocoBanner');
+  const card = document.getElementById('almocoAlertCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+  almocoBannerOpen = false;
+  if (almocoAtrasoInterval) { clearInterval(almocoAtrasoInterval); almocoAtrasoInterval = null; }
+}
+
+// ── CHIPS DE PRÉVIA ──
+function updatePreviewChips(type, registeredTime) {
+  const almocoMs = settings.almoco * 60 * 1000;
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+
+  if (type === 'almoco-ida') {
+    const retorno = new Date(parseTime(registeredTime).getTime() + almocoMs);
+    const retornoStr = retorno.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const chip = document.getElementById('chip-almoco-volta');
+    chip.className = 'status-chip preview';
+    chip.innerHTML = `<span class="chip-dot"></span><span>Almoço Volta</span><span class="chip-time" style="color:var(--accent);font-size:11px;">prev. ${retornoStr}</span>`;
+  }
+
+  if (type === 'almoco-volta') {
+    const entradaTime = parseTime(todayRecords['entrada']);
+    const idaTime = parseTime(todayRecords['almoco-ida']);
+    const voltaTime = parseTime(registeredTime);
+    const trabalhado = idaTime - entradaTime;
+    const restante = jornadaMs - trabalhado;
+    const saidaPrev = new Date(voltaTime.getTime() + restante);
+    const saidaStr = saidaPrev.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const chip = document.getElementById('chip-saida');
+    chip.className = 'status-chip preview';
+    chip.innerHTML = `<span class="chip-dot"></span><span>Saída</span><span class="chip-time" style="color:var(--accent);font-size:11px;">prev. ${saidaStr}</span>`;
+    dbg('🚀 Prévia de saída: ' + saidaStr);
+  }
+}
+
+function prorrogarAlmoco() {
+  fecharAlmocoBanner();
+  const extra = 10 * 60 * 1000;
+  const t = setTimeout(() => {
+    const now = getNow();
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    showAlmocoBanner();
+    playAlertSound();
+    sendNativeNotif('⏰ Tempo extra acabou!', 'Volte ao trabalho agora.');
+  }, extra);
+  reminderTimers.push(t);
+  const retorno = new Date(getNow().getTime() + extra);
+  const timeStr = retorno.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  showBanner('⏳', 'Almoço prorrogado +10 min', 'Novo retorno às ' + timeStr);
+  dbg('⏳ Almoço prorrogado — novo retorno às ' + timeStr);
+}
+
+// ── ALERT SOUND ──
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.3, 0.6].forEach(delay => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + delay + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 0.3);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.3);
+    });
+  } catch(e) { dbg('⚠️ Som não suportado: ' + e.message); }
+}
+
+// ── BANNER ──
+let bannerTimer = null;
+function showBanner(icon, title, sub) {
+  const el = document.getElementById('notifBanner');
+  document.getElementById('notifIcon').textContent = icon;
+  document.getElementById('notifTitle').textContent = title;
+  document.getElementById('notifSub').textContent = sub;
+  el.classList.add('show');
+  if (bannerTimer) clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ── CONTADOR DE HORAS TRABALHADAS ──
+let workerInterval = null;
+let workerAccumMs = 0;   // ms acumulados antes da pausa atual
+let workerStart = null;  // timestamp de quando o contador está rodando
+
+function workerTick() {
+  const totalMs = workerAccumMs + (workerStart ? getNow().getTime() - workerStart : 0);
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+  const extraMs = totalMs - jornadaMs;
+  const isExtra = extraMs > 0;
+
+  const toleranciaMs = 10 * 60 * 1000;
+  const isExtraReal = extraMs > toleranciaMs;
+
+  // Display — mostra horas extras em vermelho somente após tolerância
+  if (isExtraReal) {
+    const extraReal = extraMs - toleranciaMs;
+    const eh = Math.floor(extraReal / 3600000);
+    const em = Math.floor((extraReal % 3600000) / 60000);
+    const es = Math.floor((extraReal % 60000) / 1000);
+    const extraDisplay = eh > 0
+      ? `+${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`
+      : `+${String(em).padStart(2,'0')}:${String(es).padStart(2,'0')}`;
+    document.getElementById('workerTime').textContent = extraDisplay;
+    document.getElementById('workerTime').style.color = 'var(--red)';
+  } else {
+    const h = Math.floor(totalMs / 3600000);
+    const m = Math.floor((totalMs % 3600000) / 60000);
+    const s = Math.floor((totalMs % 60000) / 1000);
+    const display = h > 0
+      ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
+      : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('workerTime').textContent = display;
+    document.getElementById('workerTime').style.color = 'var(--text)';
+  }
+
+  // Anel principal — completa em 8h e trava no topo
+  const progress = Math.min(totalMs / jornadaMs, 1);
+  const circumference = 188.5;
+  document.getElementById('workerRing').style.strokeDashoffset = circumference * (1 - progress);
+  document.getElementById('workerRing').style.stroke =
+    progress < 0.75 ? 'var(--green)' : progress < 1 ? 'var(--orange)' : 'var(--accent)';
+
+  // Anel de horas extras (anel interno vermelho) — só após tolerância de 10min
+  const extraRing = document.getElementById('extraRing');
+  if (extraMs > toleranciaMs) {
+    const extraReal = extraMs - toleranciaMs;
+    extraRing.style.display = 'block';
+    const extraProgress = Math.min(extraReal / (30 * 60 * 1000), 1);
+    extraRing.style.strokeDashoffset = 138.2 * (1 - extraProgress);
+  } else {
+    extraRing.style.display = 'none';
+  }
+}
+
+function workerStart_() {
+  if (workerInterval) return;
+  workerStart = getNow().getTime();
+  workerInterval = setInterval(workerTick, 1000);
+  
+  
+  workerTick();
+  dbg('⏱️ Contador iniciado');
+}
+
+function workerPause() {
+  if (!workerInterval) return;
+  workerAccumMs += getNow().getTime() - workerStart;
+  workerStart = null;
+  clearInterval(workerInterval);
+  workerInterval = null;
+  
+  
+  dbg('⏸️ Contador pausado — acumulado: ' + Math.round(workerAccumMs/60000) + 'min');
+}
+
+function workerStop() {
+  workerPause();
+  
+  
+  dbg('⏹️ Contador encerrado');
+}
+
+function workerUpdateOnRegister(type) {
+  if (type === 'entrada')      { workerAccumMs = 0; workerStart = null; workerStart_(); }
+  if (type === 'almoco-ida')   { workerPause(); }
+  if (type === 'almoco-volta') { workerStart_(); }
+  if (type === 'saida')        { workerStop(); }
+}
+
+// Restaura o contador ao recarregar
+function restoreWorker() {
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+  workerAccumMs = 0;
+
+  if (!todayRecords['entrada']) return;
+
+  const entrada = parseTime(todayRecords['entrada']);
+
+  if (todayRecords['saida']) {
+    // Jornada encerrada — calcula total estático
+    const saida = parseTime(todayRecords['saida']);
+    let total = saida - entrada;
+    if (todayRecords['almoco-ida'] && todayRecords['almoco-volta']) {
+      total -= parseTime(todayRecords['almoco-volta']) - parseTime(todayRecords['almoco-ida']);
+    }
+    workerAccumMs = total;
+    workerTick();
+    workerStop();
+  } else if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) {
+    // Em pausa de almoço
+    workerAccumMs = parseTime(todayRecords['almoco-ida']) - entrada;
+    workerTick();
+    
+    
+  } else if (todayRecords['almoco-volta']) {
+    // Voltou do almoço — acumula pré-almoço e retoma
+    workerAccumMs = parseTime(todayRecords['almoco-ida']) - entrada;
+    workerStart = parseTime(todayRecords['almoco-volta']).getTime();
+    workerInterval = setInterval(workerTick, 1000);
+    
+    
+    workerTick();
+  } else {
+    // Trabalhando desde a entrada
+    workerStart = entrada.getTime();
+    workerInterval = setInterval(workerTick, 1000);
+    
+    
+    workerTick();
+  }
+  dbg('♻️ Contador restaurado');
+}
+
+
+function dbg(msg) { /* log desativado */ }
+
+// ── VOICE RECOGNITION ──
+function setupRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+
+  const r = new SpeechRecognition();
+  r.lang = 'pt-BR';
+  r.continuous = false;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
+    dbg('✅ recognition.onstart — microfone ativo');
+    document.getElementById('voiceHint').innerHTML = '<strong style="color:var(--red)">🔴 Ouvindo...</strong> Fale agora';
+    document.getElementById('transcriptText').textContent = '...';
+  };
+
+  r.onsoundstart = () => dbg('🔊 som detectado');
+  r.onspeechstart = () => dbg('🗣️ fala detectada');
+  r.onspeechend = () => dbg('🔇 fala encerrada');
+
+  r.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('').toLowerCase().trim();
+    dbg('📝 resultado: "' + transcript + '"');
+    document.getElementById('transcriptText').textContent = transcript;
+    if (e.results[e.results.length - 1].isFinal) {
+      processVoice(transcript);
+    }
+  };
+
+  r.onend = () => {
+    dbg('⏹️ recognition.onend');
+    stopListen();
+  };
+
+  r.onerror = (e) => {
+    dbg('❌ erro: ' + e.error + ' | ' + (e.message || ''));
+    stopListen();
+    const msgs = {
+      'not-allowed': '⛔ Permissão negada — libere o microfone nas configurações do Chrome',
+      'no-speech':   '🔇 Nenhuma fala detectada — tente novamente',
+      'network':     '🌐 Erro de rede — verifique sua conexão',
+      'aborted':     '⚠️ Reconhecimento cancelado',
+    };
+    const msg = msgs[e.error] || ('Erro: ' + e.error);
+    showBanner('⚠️', 'Microfone', msg);
+    document.getElementById('transcriptText').textContent = msg;
+  };
+
+  return r;
+}
+
+function processVoice(text) {
+  // Bloquear comandos de registro se expediente encerrado
+  const isRegistroCmd = text.includes('entrada') || text.includes('cheguei') ||
+    text.includes('almoço') || text.includes('almoco') || text.includes('volta') ||
+    text.includes('retorn') || text.includes('voltei') || text.includes('saída') ||
+    text.includes('saida') || text.includes('saindo') || text.includes('tchau');
+
+  if (todayRecords['saida'] && isRegistroCmd) {
+    showExpedienteEncerrado();
+    return;
+  }
+  if (text.includes('extra') || text.includes('mais dez') || text.includes('mais 10') || text.includes('prorroga')) {
+    if (almocoBannerOpen) {
+      prorrogarAlmoco();
+    } else {
+      showBanner('⏳', 'Nada a prorrogar', 'O aviso de almoço não está ativo');
+    }
+  } else if (text.includes('volta') || text.includes('retorn') || text.includes('voltei')) {
+    register('almoco-volta');
+  } else if (text.includes('almoço') || text.includes('almoco') || text.includes('almo')) {
+    register('almoco-ida');
+  } else if (text.includes('saída') || text.includes('saida') || text.includes('indo embora') || text.includes('saindo') || text.includes('tchau')) {
+    register('saida');
+  } else if (text.includes('entrada') || text.includes('cheguei') || text.includes('bom dia') || text.includes('comecei')) {
+    register('entrada');
+  } else {
+    showBanner('❓', 'Não entendi', '"' + text + '"');
+  }
+}
+
+function toggleListen() {
+  if (listening) { stopListen(); return; }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  dbg('SpeechRecognition: ' + (SpeechRecognition ? 'disponível ✅' : 'NÃO SUPORTADO ❌'));
+  if (!SpeechRecognition) {
+    showBanner('⚠️', 'Voz não suportada', 'Seu navegador não suporta reconhecimento de voz');
+    return;
+  }
+  startListen();
+}
+
+function startListen() {
+  recognition = setupRecognition();
+  if (!recognition) { dbg('❌ setupRecognition retornou null'); return; }
+  listening = true;
+  document.getElementById('voiceRing').classList.add('listening');
+  document.getElementById('voiceBtn').classList.add('listening');
+  document.getElementById('micIcon').textContent = '⏹️';
+  document.getElementById('transcriptText').textContent = '—';
+  dbg('Chamando recognition.start()...');
+  try {
+    recognition.start();
+  } catch(e) {
+    dbg('❌ recognition.start() erro: ' + e.message);
+    stopListen();
+    showBanner('⚠️', 'Erro ao iniciar', e.message);
+  }
+}
+
+function stopListen() {
+  listening = false;
+  if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+  document.getElementById('voiceRing').classList.remove('listening');
+  document.getElementById('voiceBtn').classList.remove('listening');
+  document.getElementById('micIcon').textContent = '🎙️';
+  document.getElementById('voiceHint').innerHTML = 'Toque e fale: <strong>"entrada"</strong>, <strong>"almoço ida"</strong>,<br><strong>"almoço volta"</strong> ou <strong>"saída"</strong>';
+}
+
+// ── SETTINGS ──
+function openSettings() {
+  document.getElementById('settingJornada').value = settings.jornada;
+  document.getElementById('settingAlmoco').value = settings.almoco;
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettingsOutside(e) {
+  if (e.target === document.getElementById('settingsModal')) {
+    document.getElementById('settingsModal').classList.remove('open');
+  }
+}
+
+function saveSettings() {
+  settings.jornada = parseInt(document.getElementById('settingJornada').value) || 8;
+  settings.almoco = parseInt(document.getElementById('settingAlmoco').value) || 60;
+  localStorage.setItem('ponto_settings', JSON.stringify(settings));
+  document.getElementById('settingsModal').classList.remove('open');
+  showBanner('✅', 'Configurações salvas', `${settings.jornada}h/dia · ${settings.almoco}min almoço`);
+}
+
+// ── HISTORY ──
+function calcTotal(records) {
+  if (!records.entrada || !records.saida) return null;
+  const entrada = parseTime(records.entrada);
+  const saida = parseTime(records.saida);
+  let total = saida - entrada;
+  if (records['almoco-ida'] && records['almoco-volta']) {
+    const idaT = parseTime(records['almoco-ida']);
+    const voltaT = parseTime(records['almoco-volta']);
+    total -= (voltaT - idaT);
+  }
+  const h = Math.floor(total / 3600000);
+  const m = Math.floor((total % 3600000) / 60000);
+  return `${h}h${String(m).padStart(2,'0')}`;
+}
+
+let selectedMonth = null;
+
+function renderHistory() {
+  const container = document.getElementById('historyList');
+  const ORDER = ['entrada', 'almoco-ida', 'almoco-volta', 'saida'];
+  const LABELS = { 'entrada': 'Entrada', 'almoco-ida': 'Almoço Saída', 'almoco-volta': 'Almoço Volta', 'saida': 'Saída' };
+
+  // Build all days
+  const allDays = [];
+  const todayFiltered = { ...todayRecords };
+  delete todayFiltered._date;
+  if (Object.keys(todayFiltered).length > 0) {
+    allDays.push({ date: todayKey(), records: todayFiltered, isToday: true });
+  }
+  history.forEach(d => allDays.push(d));
+
+  if (allDays.length === 0) {
+    container.innerHTML = '<div class="history-empty">Nenhum registro ainda.</div>';
+    document.getElementById('monthTabs').innerHTML = '';
+    return;
+  }
+
+  // Group by month
+  const months = {};
+  allDays.forEach(day => {
+    const parts = day.date.split('/'); // dd/mm/yyyy
+    const key = parts[1] + '/' + parts[2]; // mm/yyyy
+    if (!months[key]) months[key] = [];
+    months[key].push(day);
+  });
+
+  const monthKeys = Object.keys(months);
+  if (!selectedMonth || !months[selectedMonth]) selectedMonth = monthKeys[0];
+
+  // Month tabs
+  const monthNames = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  document.getElementById('monthTabs').innerHTML = monthKeys.map(k => {
+    const [mm, yyyy] = k.split('/');
+    const label = monthNames[parseInt(mm)] + ' ' + yyyy;
+    const isActive = k === selectedMonth;
+    return `<button onclick="selectMonth('${k}')" style="
+      font-family:'Outfit', sans-serif; font-size:10px; font-weight:700;
+      padding:5px 10px; border-radius:20px; cursor:pointer; white-space:nowrap;
+      border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};
+      background:${isActive ? 'var(--accent-glow)' : 'var(--surface)'};
+      color:${isActive ? 'var(--accent)' : 'var(--muted)'};
+      transition:all 0.2s;
+    ">${label}</button>`;
+  }).join('');
+
+  // Days for selected month (accordion)
+  const days = months[selectedMonth];
+  container.innerHTML = days.map((day, idx) => {
+    const total = calcTotal(day.records);
+    const isOpen = day.isToday || idx === 0;
+    const recordsHTML = ORDER.filter(k => day.records[k]).map(k => `
+      <div class="history-record">
+        <span class="record-dot ${k}"></span>
+        <span class="record-type">${LABELS[k]}</span>
+        <span class="record-time">${day.records[k]}</span>
+      </div>`).join('');
+
+    const dayId = 'day-' + day.date.replace(/\//g, '-');
+    return `
+      <div class="history-day">
+        <div class="history-day-header" onclick="toggleDay('${dayId}')">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="history-day-date">${day.isToday ? '◈ HOJE · ' : ''}${day.date}</span>
+            ${total ? `<span style="font-family:'Outfit', sans-serif;font-size:11px;color:var(--muted);">Total: <strong style="color:var(--accent)">${total}</strong></span>` : ''}
+          </div>
+          <span id="arrow-${dayId}" style="color:var(--muted);font-size:14px;transition:transform 0.2s;display:inline-block;transform:${isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">▾</span>
+        </div>
+        <div id="${dayId}" style="overflow:hidden;max-height:${isOpen ? '300px' : '0'};transition:max-height 0.3s ease;">
+          <div class="history-day-records">${recordsHTML}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function selectMonth(key) {
+  selectedMonth = key;
+  renderHistory();
+}
+
+function toggleDay(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow-' + id);
+  const isOpen = el.style.maxHeight !== '0px' && el.style.maxHeight !== '0';
+  el.style.maxHeight = isOpen ? '0' : '300px';
+  arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function calcTotalMs(records) {
+  if (!records.entrada || !records.saida) return 0;
+  const entrada = parseTime(records.entrada);
+  const saida = parseTime(records.saida);
+  let total = saida - entrada;
+  if (records['almoco-ida'] && records['almoco-volta']) {
+    total -= parseTime(records['almoco-volta']) - parseTime(records['almoco-ida']);
+  }
+  return total;
+}
+
+// ── INIT ──
+function init() {
+  // Restore today's records to UI
+  Object.keys(todayRecords).filter(k => k !== '_date').forEach(type => {
+    const timeStr = todayRecords[type];
+    document.getElementById('time-' + type).textContent = timeStr;
+    const chip = document.getElementById(TYPES[type].chip);
+    chip.classList.add('active');
+    chip.innerHTML = `<span class="chip-dot"></span><span>${TYPES[type].label}</span><span class="chip-time">${timeStr}</span>`;
+  });
+
+  // Restaura prévias
+  if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) updatePreviewChips('almoco-ida', todayRecords['almoco-ida']);
+  if (todayRecords['almoco-volta'] && !todayRecords['saida']) updatePreviewChips('almoco-volta', todayRecords['almoco-volta']);
+
+  renderHistory();
+}
+
+// ════════════════════════════════════════════════════
+// MODO COMPACTO — BLOCO ISOLADO
+// Para reverter: remover este bloco JS inteiro
+// e remover o bloco HTML marcado com "MODO COMPACTO"
+// ════════════════════════════════════════════════════
+
+const QUICK_ORDER = [
+  { type: 'entrada',      label: 'Registrar Entrada',      icon: '🟢', color: 'var(--green)',  glow: 'var(--green-glow)'  },
+  { type: 'almoco-ida',   label: 'Registrar Almoço Saída', icon: '🍽️', color: 'var(--orange)', glow: 'var(--orange-glow)' },
+  { type: 'almoco-volta', label: 'Registrar Almoço Volta', icon: '↩️', color: 'var(--accent)', glow: 'var(--accent-glow)' },
+  { type: 'saida',        label: 'Registrar Saída',        icon: '🔴', color: 'var(--red)',    glow: 'var(--red-glow)'    },
+];
+
+let quickDrawerShown = false;
+
+function updateQuickDrawer() {
+  if (todayRecords['saida']) { fecharQuickDrawer(); return; }
+
+  // Descobre próximo registro pendente
+  const pendentes = QUICK_ORDER.filter(q => !todayRecords[q.type]);
+  if (pendentes.length === 0) { fecharQuickDrawer(); return; }
+
+  // Só mostra se já tiver pelo menos uma marcação feita hoje
+  const temRegistro = QUICK_ORDER.some(q => todayRecords[q.type]);
+  if (!temRegistro) { fecharQuickDrawer(); return; }
+
+  // Monta botões dos próximos pendentes (máx 2)
+  const proximos = pendentes.slice(0, 2);
+  document.getElementById('quickButtons').innerHTML = proximos.map(q => `
+    <button onclick="register('${q.type}'); atualizarDrawerAposRegistro();" style="
+      width:100%; height:52px;
+      background:${q.glow}; border:1px solid ${q.color};
+      border-radius:14px; color:${q.color};
+      font-family:'Outfit',sans-serif; font-size:14px; font-weight:700;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
+      transition:all 0.2s;
+    ">
+      <span style="font-size:20px">${q.icon}</span> ${q.label}
+    </button>
+  `).join('');
+
+  // Exibe a gaveta
+  document.getElementById('quickDrawer').style.transform = 'translateX(-50%) translateY(0)';
+  quickDrawerShown = true;
+}
+
+function atualizarDrawerAposRegistro() {
+  setTimeout(() => updateQuickDrawer(), 2500); // aguarda o WorkTime fechar
+}
+
+function fecharQuickDrawer() {
+  document.getElementById('quickDrawer').style.transform = 'translateX(-50%) translateY(100%)';
+  quickDrawerShown = false;
+}
+
+// Mostra gaveta ao reabrir o app se já tiver registro do dia
+function initQuickDrawer() {
+  if (!todayRecords['saida'] && QUICK_ORDER.some(q => todayRecords[q.type])) {
+    setTimeout(() => updateQuickDrawer(), 800);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// FIM DO MODO COMPACTO
+// ════════════════════════════════════════════════════
+
+
+restoreWorker();
+if (todayRecords['saida']) lockAllButtons();
+initQuickDrawer();
+dbg('🚀 App carregado');
+</script>
+<!-- ========================================================
+     MODO COMPACTO — BLOCO ISOLADO
+     Para reverter: remover este bloco HTML inteiro
+     e remover o bloco JS marcado com "MODO COMPACTO"
+     ======================================================== -->
+<div id="quickDrawer" style="
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(100%);
+  width:100%; max-width:430px;
+  background:var(--surface);
+  border-top:2px solid var(--accent);
+  border-radius:24px 24px 0 0;
+  padding:16px 20px 36px;
+  z-index:150;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+  transition:transform 0.4s cubic-bezier(0.32,0.72,0,1);
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;">REGISTRO RÁPIDO</div>
+    <button onclick="fecharQuickDrawer()" style="
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:8px;width:28px;height:28px;color:var(--muted);
+      font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    ">✕</button>
+  </div>
+  <div id="quickButtons" style="display:flex;flex-direction:column;gap:10px;"></div>
+</div>
+<!-- FIM DO MODO COMPACTO HTML -->
+
+<!-- ASSINATURA -->
+<div style="
+  text-align:center;
+  padding:16px 0 32px;
+  font-family:'Outfit', sans-serif;
+  font-size:11px;
+  color:rgba(255,255,255,0.08);
+  letter-spacing:1.5px;
+  user-select:none;
+  pointer-events:none;
+">by Douglas Souza &mdash; D.Souza</div>
+
+</body>
+</html>
