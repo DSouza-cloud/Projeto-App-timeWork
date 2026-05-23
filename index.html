@@ -769,39 +769,67 @@ header {
       </button>
     </div>
 
-    <!-- History -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div class="section-title" style="margin-bottom:0">◈ Histórico</div>
-      <div id="monthTabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;"></div>
-    </div>
-    <div class="history-list" id="historyList">
-      <div class="history-empty">Nenhum registro ainda.</div>
-    </div>
-
   </div>
 </div>
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settingsModal" onclick="closeSettingsOutside(event)">
-  <div class="modal">
+  <div class="modal" style="max-height:85dvh;display:flex;flex-direction:column;padding-bottom:0;">
     <div class="modal-handle"></div>
-    <div class="modal-title">// CONFIGURAÇÕES</div>
 
-    <div class="setting-group">
-      <div class="setting-label">Jornada diária (horas)</div>
-      <div class="setting-row">
-        <input class="setting-input" id="settingJornada" type="number" value="8" min="1" max="12">
+    <!-- Abas -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button id="tabHistorico" onclick="switchTab('historico')" style="
+        flex:1;height:40px;border-radius:12px;border:1px solid var(--accent);
+        background:var(--accent-glow);color:var(--accent);
+        font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
+        transition:all 0.2s;
+      ">Histórico</button>
+      <button id="tabConfig" onclick="switchTab('config')" style="
+        flex:1;height:40px;border-radius:12px;border:1px solid var(--border);
+        background:transparent;color:var(--muted);
+        font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
+        transition:all 0.2s;
+      ">Configurações</button>
+    </div>
+
+    <!-- ABA HISTÓRICO -->
+    <div id="panelHistorico" style="flex:1;overflow-y:auto;padding-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;">Registros</div>
+        <div id="monthTabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;"></div>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Nenhum registro ainda.</div>
       </div>
     </div>
 
-    <div class="setting-group">
-      <div class="setting-label">Intervalo de almoço (minutos)</div>
-      <div class="setting-row">
-        <input class="setting-input" id="settingAlmoco" type="number" value="60" min="15" max="180">
+    <!-- ABA CONFIGURAÇÕES -->
+    <div id="panelConfig" style="display:none;padding-bottom:24px;">
+      <div class="setting-group">
+        <div class="setting-label">Jornada diária (horas)</div>
+        <div class="setting-row">
+          <input class="setting-input" id="settingJornada" type="number" value="8" min="1" max="12">
+        </div>
       </div>
+
+      <div class="setting-group">
+        <div class="setting-label">Intervalo de almoço (minutos)</div>
+        <div class="setting-row">
+          <input class="setting-input" id="settingAlmoco" type="number" value="60" min="15" max="180">
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-label">Dias de trabalho</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:4px;" id="diasSemana">
+          <!-- gerado pelo JS -->
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">SALVAR</button>
     </div>
 
-    <button class="save-btn" onclick="saveSettings()">SALVAR</button>
   </div>
 </div>
 
@@ -1017,6 +1045,95 @@ header {
   </div>
 </div>
 
+<!-- CONFIRMAÇÃO ALMOÇO ANTECIPADO -->
+<div id="confirmAlmocoOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(10px);
+  z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#0f1a0a;
+    border:2px solid var(--orange);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(255,149,0,0.25);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  " id="confirmAlmocoCard">
+    <div style="font-size:48px;margin-bottom:12px">🍽️</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--orange);letter-spacing:1px;margin-bottom:12px">ALMOÇO ANTECIPADO</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:8px;">
+      Você ainda não completou 3h de trabalho.
+    </div>
+    <div id="confirmAlmocoFalta" style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--orange);margin-bottom:8px;"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:24px;">
+      Horário recomendado: <strong id="confirmAlmocoHorario" style="color:var(--text)"></strong><br>
+      Deseja registrar o almoço mesmo assim?
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="fecharConfirmAlmoco()" style="
+        flex:1; height:48px;
+        background:var(--surface2); border:1px solid var(--border);
+        border-radius:14px; color:var(--muted);
+        font-family:'Outfit',sans-serif; font-size:12px; font-weight:700;
+        cursor:pointer;
+      ">CANCELAR</button>
+      <button onclick="confirmarAlmocoAntecipado()" style="
+        flex:2; height:48px;
+        background:rgba(255,149,0,0.15); border:1px solid var(--orange);
+        border-radius:14px; color:var(--orange);
+        font-family:'Outfit',sans-serif; font-size:12px; font-weight:700;
+        cursor:pointer;
+      ">SIM, REGISTRAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- BLOQUEIO DE HORÁRIO -->
+<div id="bloqueioHorarioOverlay" style="
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(10px);
+  z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.3s;
+  padding:24px;
+">
+  <div style="
+    width:100%; max-width:360px;
+    background:#0a0f1e;
+    border:2px solid var(--accent);
+    border-radius:24px;
+    padding:32px 24px;
+    text-align:center;
+    box-shadow:0 0 60px rgba(0,212,255,0.25);
+    transform:scale(0.9);
+    transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  " id="bloqueioHorarioCard">
+    <div id="bloqueioHorarioIcon" style="font-size:48px;margin-bottom:12px">⏰</div>
+    <div id="bloqueioHorarioTitulo" style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:12px"></div>
+    <div id="bloqueioHorarioMensagem" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;white-space:pre-line;"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px;">
+      Liberado a partir das <strong id="bloqueioHorarioHorario" style="color:var(--text);font-size:18px;display:block;margin-top:6px;"></strong>
+    </div>
+    <button onclick="fecharBloqueioHorario()" style="
+      width:100%; height:48px;
+      background:var(--accent-glow); border:1px solid var(--accent);
+      border-radius:14px; color:var(--accent);
+      font-family:'Outfit',sans-serif; font-size:13px; font-weight:700;
+      cursor:pointer; letter-spacing:0.5px;
+    ">ENTENDIDO ✓</button>
+  </div>
+</div>
+
 <!-- BLOQUEIO RETORNO ANTECIPADO -->
 <div id="bloqueioOverlay" style="
   position:fixed; inset:0;
@@ -1077,7 +1194,7 @@ header {
 
 <script>
 // ── STATE ──
-let settings = JSON.parse(localStorage.getItem('ponto_settings') || '{"jornada":8,"almoco":60}');
+let settings = JSON.parse(localStorage.getItem('ponto_settings') || '{"jornada":8,"almoco":60,"diasTrabalho":[1,2,3,4,5]}');
 let todayRecords = JSON.parse(localStorage.getItem('ponto_today') || '{}');
 let history = JSON.parse(localStorage.getItem('ponto_history') || '[]');
 let listening = false;
@@ -1086,7 +1203,7 @@ let reminderTimers = [];
 let bloqueioInterval = null;
 let bloqueioTotalMs = 0;
 
-const todayKey = () => new Date().toLocaleDateString('pt-BR');
+const todayKey = () => getNow().toLocaleDateString('pt-BR');
 
 // Check if stored today is actually today
 if (todayRecords._date !== todayKey()) {
@@ -1130,6 +1247,39 @@ function startFastForward() {
 function stopFastForward() {}
 
 function recheckTimers() {
+  // Verifica virada do dia
+  if (todayRecords._date && todayRecords._date !== todayKey()) {
+    const prev = { ...todayRecords };
+    delete prev._date;
+    if (Object.keys(prev).length > 0) {
+      history.unshift({ date: todayRecords._date, records: prev });
+      if (history.length > 30) history = history.slice(0, 30);
+      localStorage.setItem('ponto_history', JSON.stringify(history));
+    }
+    todayRecords = { _date: todayKey() };
+    localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
+    // Reset UI
+    ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
+      document.getElementById('time-' + type).textContent = '—';
+      const chip = document.getElementById(TYPES[type].chip);
+      chip.className = 'status-chip';
+      chip.innerHTML = `<span class="chip-dot"></span><span>${TYPES[type].label}</span>`;
+    });
+    workerAccumMs = 0; workerStart = null;
+    if (workerInterval) { clearInterval(workerInterval); workerInterval = null; }
+    document.getElementById('workerTime').textContent = '00:00';
+    document.getElementById('workerTime').style.color = 'var(--text)';
+    document.getElementById('extraRing').style.display = 'none';
+    document.getElementById('workerRing').style.strokeDashoffset = '188.5';
+    ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
+      const btn = document.getElementById('btn-' + type);
+      btn.style.opacity = ''; btn.style.filter = ''; btn.style.cursor = '';
+    });
+    fecharQuickDrawer();
+    renderHistory();
+    dbg('🌅 Novo dia detectado — registros zerados');
+    return;
+  }
   const almocoMs = settings.almoco * 60 * 1000;
   const jornadaMs = settings.jornada * 60 * 60 * 1000;
   const now = getNow();
@@ -1279,6 +1429,68 @@ function lockAllButtons() {
     '<strong style="color:var(--muted)">🌙 Expediente encerrado</strong><br>Próxima marcação amanhã';
 }
 
+// ── CONFIRMAÇÃO ALMOÇO ANTECIPADO ──
+function showConfirmAlmoco(restStr, liberadoStr) {
+  document.getElementById('confirmAlmocoFalta').textContent = 'Faltam ' + restStr;
+  document.getElementById('confirmAlmocoHorario').textContent = liberadoStr;
+  const overlay = document.getElementById('confirmAlmocoOverlay');
+  const card = document.getElementById('confirmAlmocoCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+  playBlockSound();
+}
+
+function fecharConfirmAlmoco() {
+  const overlay = document.getElementById('confirmAlmocoOverlay');
+  const card = document.getElementById('confirmAlmocoCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+}
+
+function confirmarAlmocoAntecipado() {
+  fecharConfirmAlmoco();
+  // Força o registro pulando a validação
+  const now = getNow();
+  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  todayRecords['almoco-ida'] = timeStr;
+  localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
+  document.getElementById('time-almoco-ida').textContent = timeStr;
+  const chip = document.getElementById('chip-almoco-ida');
+  chip.className = 'status-chip active';
+  chip.innerHTML = `<span class="chip-dot pulse"></span><span>Almoço Saída</span><span class="chip-time">${timeStr}</span>`;
+  showBanner('🍽️', 'Almoço Saída registrada!', timeStr);
+  updatePreviewChips('almoco-ida', timeStr);
+  setTimeout(() => showWorktimeAviso(), 2000);
+  workerUpdateOnRegister('almoco-ida');
+  scheduleReminders('almoco-ida', now);
+  atualizarDrawerAposRegistro();
+  renderHistory();
+}
+
+// ── BLOQUEIO DE HORÁRIO ──
+function showBloqueioHorario(icon, titulo, mensagem, horario) {
+  document.getElementById('bloqueioHorarioIcon').textContent = icon;
+  document.getElementById('bloqueioHorarioTitulo').textContent = titulo;
+  document.getElementById('bloqueioHorarioMensagem').textContent = mensagem;
+  document.getElementById('bloqueioHorarioHorario').textContent = horario;
+  const overlay = document.getElementById('bloqueioHorarioOverlay');
+  const card = document.getElementById('bloqueioHorarioCard');
+  overlay.style.opacity = '1';
+  overlay.style.pointerEvents = 'all';
+  card.style.transform = 'scale(1)';
+  playBlockSound();
+}
+
+function fecharBloqueioHorario() {
+  const overlay = document.getElementById('bloqueioHorarioOverlay');
+  const card = document.getElementById('bloqueioHorarioCard');
+  overlay.style.opacity = '0';
+  overlay.style.pointerEvents = 'none';
+  card.style.transform = 'scale(0.9)';
+}
+
 // ── BLOQUEIO ALMOÇO ──
 function showBloqueioAlmoco(restanteMs, fimAlmoco) {
   bloqueioTotalMs = restanteMs;
@@ -1360,6 +1572,14 @@ const TYPES = {
 };
 
 function register(type) {
+  // Bloquear se hoje não é dia de trabalho
+  const diaSemana = getNow().getDay();
+  if (!settings.diasTrabalho.includes(diaSemana)) {
+    showBanner('📅', 'Dia não útil', 'Hoje não está configurado como dia de trabalho.');
+    playBlockSound();
+    return;
+  }
+
   // Bloquear se expediente já encerrado (saída registrada)
   if (todayRecords['saida']) {
     showExpedienteEncerrado();
@@ -1379,6 +1599,17 @@ function register(type) {
     }, 600);
     dbg('🔒 Tentativa duplicada: ' + type + ' (já registrado às ' + timeStr + ')');
     return;
+  }
+
+  // Restrição: entrada mínimo 07:30
+  if (type === 'entrada') {
+    const now = getNow();
+    const horaAtual = now.getHours() * 60 + now.getMinutes();
+    const minEntrada = 7 * 60 + 30; // 07:30
+    if (horaAtual < minEntrada) {
+      showBloqueioHorario('⏰', 'ENTRADA BLOQUEADA', 'O registro de entrada só é permitido a partir das 07:30.', '07:30');
+      return;
+    }
   }
 
   // Bloquear retorno antecipado do almoço
@@ -1958,9 +2189,49 @@ function stopListen() {
 }
 
 // ── SETTINGS ──
+// ── SETTINGS ──
+const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function renderDiasSemana() {
+  const container = document.getElementById('diasSemana');
+  container.innerHTML = DIAS.map((d, i) => {
+    const ativo = settings.diasTrabalho.includes(i);
+    return `<button id="dia-${i}" onclick="toggleDia(${i})" style="
+      height:36px; border-radius:10px;
+      border:1px solid ${ativo ? 'var(--accent)' : 'var(--border)'};
+      background:${ativo ? 'var(--accent-glow)' : 'transparent'};
+      color:${ativo ? 'var(--accent)' : 'var(--muted)'};
+      font-family:'Outfit',sans-serif; font-size:11px; font-weight:700;
+      cursor:pointer; transition:all 0.2s;
+    ">${d}</button>`;
+  }).join('');
+}
+
+function toggleDia(i) {
+  const idx = settings.diasTrabalho.indexOf(i);
+  if (idx >= 0) settings.diasTrabalho.splice(idx, 1);
+  else settings.diasTrabalho.push(i);
+  renderDiasSemana();
+}
+
+function switchTab(tab) {
+  const isHistorico = tab === 'historico';
+  document.getElementById('panelHistorico').style.display = isHistorico ? 'block' : 'none';
+  document.getElementById('panelConfig').style.display = isHistorico ? 'none' : 'block';
+  document.getElementById('tabHistorico').style.background = isHistorico ? 'var(--accent-glow)' : 'transparent';
+  document.getElementById('tabHistorico').style.borderColor = isHistorico ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('tabHistorico').style.color = isHistorico ? 'var(--accent)' : 'var(--muted)';
+  document.getElementById('tabConfig').style.background = !isHistorico ? 'var(--accent-glow)' : 'transparent';
+  document.getElementById('tabConfig').style.borderColor = !isHistorico ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('tabConfig').style.color = !isHistorico ? 'var(--accent)' : 'var(--muted)';
+}
+
 function openSettings() {
   document.getElementById('settingJornada').value = settings.jornada;
   document.getElementById('settingAlmoco').value = settings.almoco;
+  renderDiasSemana();
+  renderHistory();
+  switchTab('historico');
   document.getElementById('settingsModal').classList.add('open');
 }
 
