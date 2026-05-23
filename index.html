@@ -2110,12 +2110,106 @@ function init() {
   renderHistory();
 }
 
-init();
-restoreTimers();
+// ════════════════════════════════════════════════════
+// MODO COMPACTO — BLOCO ISOLADO
+// Para reverter: remover este bloco JS inteiro
+// e remover o bloco HTML marcado com "MODO COMPACTO"
+// ════════════════════════════════════════════════════
+
+const QUICK_ORDER = [
+  { type: 'entrada',      label: 'Registrar Entrada',      icon: '🟢', color: 'var(--green)',  glow: 'var(--green-glow)'  },
+  { type: 'almoco-ida',   label: 'Registrar Almoço Saída', icon: '🍽️', color: 'var(--orange)', glow: 'var(--orange-glow)' },
+  { type: 'almoco-volta', label: 'Registrar Almoço Volta', icon: '↩️', color: 'var(--accent)', glow: 'var(--accent-glow)' },
+  { type: 'saida',        label: 'Registrar Saída',        icon: '🔴', color: 'var(--red)',    glow: 'var(--red-glow)'    },
+];
+
+let quickDrawerShown = false;
+
+function updateQuickDrawer() {
+  if (todayRecords['saida']) { fecharQuickDrawer(); return; }
+
+  // Descobre próximo registro pendente
+  const pendentes = QUICK_ORDER.filter(q => !todayRecords[q.type]);
+  if (pendentes.length === 0) { fecharQuickDrawer(); return; }
+
+  // Só mostra se já tiver pelo menos uma marcação feita hoje
+  const temRegistro = QUICK_ORDER.some(q => todayRecords[q.type]);
+  if (!temRegistro) { fecharQuickDrawer(); return; }
+
+  // Monta botões dos próximos pendentes (máx 2)
+  const proximos = pendentes.slice(0, 2);
+  document.getElementById('quickButtons').innerHTML = proximos.map(q => `
+    <button onclick="register('${q.type}'); atualizarDrawerAposRegistro();" style="
+      width:100%; height:52px;
+      background:${q.glow}; border:1px solid ${q.color};
+      border-radius:14px; color:${q.color};
+      font-family:'Outfit',sans-serif; font-size:14px; font-weight:700;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
+      transition:all 0.2s;
+    ">
+      <span style="font-size:20px">${q.icon}</span> ${q.label}
+    </button>
+  `).join('');
+
+  // Exibe a gaveta
+  document.getElementById('quickDrawer').style.transform = 'translateX(-50%) translateY(0)';
+  quickDrawerShown = true;
+}
+
+function atualizarDrawerAposRegistro() {
+  setTimeout(() => updateQuickDrawer(), 2500); // aguarda o WorkTime fechar
+}
+
+function fecharQuickDrawer() {
+  document.getElementById('quickDrawer').style.transform = 'translateX(-50%) translateY(100%)';
+  quickDrawerShown = false;
+}
+
+// Mostra gaveta ao reabrir o app se já tiver registro do dia
+function initQuickDrawer() {
+  if (!todayRecords['saida'] && QUICK_ORDER.some(q => todayRecords[q.type])) {
+    setTimeout(() => updateQuickDrawer(), 800);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// FIM DO MODO COMPACTO
+// ════════════════════════════════════════════════════
+
+
 restoreWorker();
 if (todayRecords['saida']) lockAllButtons();
-dbg('🚀 App carregado — toque no microfone para testar');
+initQuickDrawer();
+dbg('🚀 App carregado');
 </script>
+<!-- ========================================================
+     MODO COMPACTO — BLOCO ISOLADO
+     Para reverter: remover este bloco HTML inteiro
+     e remover o bloco JS marcado com "MODO COMPACTO"
+     ======================================================== -->
+<div id="quickDrawer" style="
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(100%);
+  width:100%; max-width:430px;
+  background:var(--surface);
+  border-top:2px solid var(--accent);
+  border-radius:24px 24px 0 0;
+  padding:16px 20px 36px;
+  z-index:150;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+  transition:transform 0.4s cubic-bezier(0.32,0.72,0,1);
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;">REGISTRO RÁPIDO</div>
+    <button onclick="fecharQuickDrawer()" style="
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:8px;width:28px;height:28px;color:var(--muted);
+      font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    ">✕</button>
+  </div>
+  <div id="quickButtons" style="display:flex;flex-direction:column;gap:10px;"></div>
+</div>
+<!-- FIM DO MODO COMPACTO HTML -->
+
 <!-- ASSINATURA -->
 <div style="
   text-align:center;
