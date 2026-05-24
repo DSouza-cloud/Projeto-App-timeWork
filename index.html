@@ -672,10 +672,10 @@ header {
               stroke-linecap="round"
               style="transition:stroke-dashoffset 1s linear, stroke 0.5s"/>
             <!-- Anel horas extras (interno) -->
-            <circle cx="45" cy="45" r="27" fill="none" stroke="transparent" stroke-width="5"/>
-            <circle id="extraRing" cx="45" cy="45" r="27" fill="none"
+            <circle cx="45" cy="45" r="33" fill="none" stroke="transparent" stroke-width="4"/>
+            <circle id="extraRing" cx="45" cy="45" r="33" fill="none"
               stroke="var(--red)" stroke-width="5"
-              stroke-dasharray="169.6" stroke-dashoffset="169.6"
+              stroke-dasharray="207.3" stroke-dashoffset="207.3"
               stroke-linecap="round"
               style="transition:stroke-dashoffset 1s linear; filter:drop-shadow(0 0 4px rgba(255,59,92,0.8)); display:none;"/>
           </svg>
@@ -2120,7 +2120,7 @@ function workerTick() {
     const extraReal = extraMs - toleranciaMs;
     extraRing.style.display = 'block';
     const extraProgress = Math.min(extraReal / (30 * 60 * 1000), 1);
-    extraRing.style.strokeDashoffset = 169.6 * (1 - extraProgress);
+    extraRing.style.strokeDashoffset = 207.3 * (1 - extraProgress);
   } else {
     extraRing.style.display = 'none';
   }
