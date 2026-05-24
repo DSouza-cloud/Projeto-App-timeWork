@@ -1,6 +1,6 @@
 {
-  "name": "Ponto Digital",
-  "short_name": "Ponto",
+  "name": "TimeWork",
+  "short_name": "TimeWork",
   "description": "Controle de ponto digital com registro por voz",
   "start_url": "/",
   "display": "standalone",

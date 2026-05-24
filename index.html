@@ -7,9 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ponto Digital">
+<meta name="apple-mobile-web-app-title" content="TimeWork">
 <meta name="description" content="Controle de ponto digital com registro por voz">
-<title>Ponto Digital</title>
+<title>TimeWork</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -89,12 +89,13 @@ header {
 
 .app-name {
   font-family: 'Outfit', sans-serif;
-  font-size: 11px;
-  font-weight: 400;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--accent);
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  margin-bottom: 6px;
+  letter-spacing: 2px;
+  text-transform: none !important;
+  margin-bottom: 12px;
+  margin-top: 4px;
 }
 
 .clock-display {
@@ -649,7 +650,7 @@ header {
   <header>
     <div class="header-row">
       <div>
-        <div class="app-name">◈ Ponto Digital</div>
+        <div class="app-name">TimeWork</div>
         <div class="clock-display" id="clockDisplay">
           <span id="clockHM">00:00</span><span class="seconds" id="clockS">:00</span>
         </div>
@@ -1346,12 +1347,25 @@ function recheckTimers() {
   const now = getNow();
 
   if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) {
-    const fimAlmoco = new Date(parseTime(todayRecords['almoco-ida']).getTime() + almocoMs);
+    const idaTime = parseTime(todayRecords['almoco-ida']);
+    const fimAlmoco = new Date(idaTime.getTime() + almocoMs);
+    const limiteCLT = new Date(idaTime.getTime() + 2 * 60 * 60 * 1000);
+    const avisoCLT  = new Date(idaTime.getTime() + (2 * 60 - 10) * 60 * 1000);
+
     if (now >= fimAlmoco && !almocoBannerOpen) {
       if (timerAlmoco) { clearTimeout(timerAlmoco); timerAlmoco = null; }
       showAlmocoBanner();
       playAlertSound();
       dbg('⏩ Alerta almoço disparado');
+    }
+    if (now >= avisoCLT && now < limiteCLT && !almocoBannerOpen) {
+      const limiteStr = limiteCLT.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      showBanner('⚖️', 'Atenção! Limite CLT em 10 min', 'Retorne até ' + limiteStr);
+      dbg('⏩ Aviso CLT disparado');
+    }
+    if (now >= limiteCLT) {
+      showBanner('🚨', 'Limite CLT atingido!', 'Retorne imediatamente — 2h de almoço ultrapassado!');
+      dbg('⏩ Limite CLT atingido');
     }
   }
 
@@ -1742,10 +1756,17 @@ function register(type) {
   todayRecords[type] = timeStr;
   localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
 
-  // Flash button
+  // Flash e desabilita botão após registro
   const btn = document.getElementById('btn-' + type);
   btn.classList.add('flash');
   document.getElementById('time-' + type).textContent = timeStr;
+  setTimeout(() => {
+    btn.classList.remove('flash');
+    btn.style.opacity = '0.4';
+    btn.style.filter = 'grayscale(0.6)';
+    btn.style.cursor = 'not-allowed';
+    btn.style.pointerEvents = 'none';
+  }, 600);
 
   // Update chip
   const chip = document.getElementById(TYPES[type].chip);
@@ -1792,6 +1813,8 @@ function scheduleReminders(type, fromTime) {
 
   if (type === 'almoco-ida') {
     if (timerAlmoco) clearTimeout(timerAlmoco);
+    if (window.timerCLT) clearTimeout(window.timerCLT);
+
     const fimAlmoco = new Date(fromTime.getTime() + almocoMs);
     const ms = fimAlmoco - getNow();
     dbg('⏱️ Timer almoço: ' + Math.round(ms/1000) + 's até ' + fimAlmoco.toLocaleTimeString('pt-BR'));
@@ -1802,6 +1825,33 @@ function scheduleReminders(type, fromTime) {
         sendNativeNotif('🍽️ Almoço acabando!', 'Hora de voltar ao trabalho!');
         dbg('🍽️ Alerta de almoço disparado!');
       }, ms);
+    }
+
+    // Aviso CLT — 1h50min de almoço (10 min antes do limite de 2h)
+    const limiteCLT = 2 * 60 * 60 * 1000;       // 2h em ms
+    const avisoCLT = limiteCLT - 10 * 60 * 1000; // 1h50min
+    const msCLT = fromTime.getTime() + avisoCLT - getNow().getTime();
+    const msCLTmax = fromTime.getTime() + limiteCLT - getNow().getTime();
+
+    if (msCLT > 0) {
+      window.timerCLT = setTimeout(() => {
+        const limiteStr = new Date(fromTime.getTime() + limiteCLT)
+          .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        showBanner('⚖️', 'Atenção! Limite CLT em 10 min', 'O intervalo máximo é 2h. Retorne até ' + limiteStr);
+        playAlertSound();
+        sendNativeNotif('⚖️ Limite de almoço CLT!', 'Retorne até ' + limiteStr + ' (máx. 2h de intervalo).');
+        dbg('⚖️ Aviso CLT disparado');
+
+        // Se chegar em 2h e não voltou — aviso final
+        setTimeout(() => {
+          if (!todayRecords['almoco-volta']) {
+            showBanner('🚨', 'Limite CLT atingido!', 'Você atingiu 2h de almoço. Retorne imediatamente!');
+            playAlertSound();
+            sendNativeNotif('🚨 2h de almoço atingido!', 'Retorne imediatamente — limite CLT ultrapassado.');
+            dbg('🚨 Limite CLT de 2h atingido!');
+          }
+        }, 10 * 60 * 1000);
+      }, msCLT);
     }
   }
 
@@ -2468,6 +2518,12 @@ function init() {
     const chip = document.getElementById(TYPES[type].chip);
     chip.classList.add('active');
     chip.innerHTML = `<span class="chip-dot"></span><span>${TYPES[type].label}</span><span class="chip-time">${timeStr}</span>`;
+    // Esmaecer botão já registrado
+    const btn = document.getElementById('btn-' + type);
+    btn.style.opacity = '0.4';
+    btn.style.filter = 'grayscale(0.6)';
+    btn.style.cursor = 'not-allowed';
+    btn.style.pointerEvents = 'none';
   });
 
   // Restaura prévias
