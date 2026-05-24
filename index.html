@@ -661,26 +661,26 @@ header {
 
       <!-- CONTADOR CIRCULAR -->
       <div style="margin-top:4px;">
-        <div style="position:relative;width:72px;height:72px;">
-          <svg width="72" height="72" style="transform:rotate(-90deg);position:absolute;inset:0;">
+        <div style="position:relative;width:90px;height:90px;">
+          <svg width="90" height="90" style="transform:rotate(-90deg);position:absolute;inset:0;">
             <!-- Trilha base -->
-            <circle cx="36" cy="36" r="30" fill="none" stroke="var(--border)" stroke-width="4"/>
+            <circle cx="45" cy="45" r="38" fill="none" stroke="var(--border)" stroke-width="4"/>
             <!-- Anel jornada normal -->
-            <circle id="workerRing" cx="36" cy="36" r="30" fill="none"
+            <circle id="workerRing" cx="45" cy="45" r="38" fill="none"
               stroke="var(--accent)" stroke-width="4"
-              stroke-dasharray="188.5" stroke-dashoffset="188.5"
+              stroke-dasharray="238.8" stroke-dashoffset="238.8"
               stroke-linecap="round"
               style="transition:stroke-dashoffset 1s linear, stroke 0.5s"/>
-            <!-- Anel horas extras (externo) -->
-            <circle cx="36" cy="36" r="22" fill="none" stroke="transparent" stroke-width="5"/>
-            <circle id="extraRing" cx="36" cy="36" r="22" fill="none"
+            <!-- Anel horas extras (interno) -->
+            <circle cx="45" cy="45" r="27" fill="none" stroke="transparent" stroke-width="5"/>
+            <circle id="extraRing" cx="45" cy="45" r="27" fill="none"
               stroke="var(--red)" stroke-width="5"
-              stroke-dasharray="138.2" stroke-dashoffset="138.2"
+              stroke-dasharray="169.6" stroke-dashoffset="169.6"
               stroke-linecap="round"
               style="transition:stroke-dashoffset 1s linear; filter:drop-shadow(0 0 4px rgba(255,59,92,0.8)); display:none;"/>
           </svg>
           <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <div id="workerTime" style="font-family:'Outfit', sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1;">00:00</div>
+            <div id="workerTime" style="font-family:'Outfit', sans-serif;font-size:14px;font-weight:700;color:var(--text);line-height:1;">00:00</div>
           </div>
         </div>
       </div>
@@ -1332,7 +1332,7 @@ function recheckTimers() {
     document.getElementById('workerTime').textContent = '00:00';
     document.getElementById('workerTime').style.color = 'var(--text)';
     document.getElementById('extraRing').style.display = 'none';
-    document.getElementById('workerRing').style.strokeDashoffset = '188.5';
+    document.getElementById('workerRing').style.strokeDashoffset = '238.8';
     ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
       const btn = document.getElementById('btn-' + type);
       btn.style.opacity = ''; btn.style.filter = ''; btn.style.cursor = '';
@@ -2109,7 +2109,7 @@ function workerTick() {
 
   // Anel principal — completa em 8h e trava no topo
   const progress = Math.min(totalMs / jornadaMs, 1);
-  const circumference = 188.5;
+  const circumference = 238.8;
   document.getElementById('workerRing').style.strokeDashoffset = circumference * (1 - progress);
   document.getElementById('workerRing').style.stroke =
     progress < 0.75 ? 'var(--green)' : progress < 1 ? 'var(--orange)' : 'var(--accent)';
@@ -2120,7 +2120,7 @@ function workerTick() {
     const extraReal = extraMs - toleranciaMs;
     extraRing.style.display = 'block';
     const extraProgress = Math.min(extraReal / (30 * 60 * 1000), 1);
-    extraRing.style.strokeDashoffset = 138.2 * (1 - extraProgress);
+    extraRing.style.strokeDashoffset = 169.6 * (1 - extraProgress);
   } else {
     extraRing.style.display = 'none';
   }
