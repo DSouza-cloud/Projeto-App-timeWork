@@ -779,19 +779,22 @@ header {
     <div class="modal-handle"></div>
 
     <!-- Abas -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;">
+    <div style="display:flex;gap:6px;margin-bottom:20px;">
       <button id="tabHistorico" onclick="switchTab('historico')" style="
         flex:1;height:40px;border-radius:12px;border:1px solid var(--accent);
         background:var(--accent-glow);color:var(--accent);
-        font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
-        transition:all 0.2s;
+        font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;
       ">Histórico</button>
+      <button id="tabBanco" onclick="switchTab('banco')" style="
+        flex:1;height:40px;border-radius:12px;border:1px solid var(--border);
+        background:transparent;color:var(--muted);
+        font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;display:none;
+      ">Banco Hrs</button>
       <button id="tabConfig" onclick="switchTab('config')" style="
         flex:1;height:40px;border-radius:12px;border:1px solid var(--border);
         background:transparent;color:var(--muted);
-        font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
-        transition:all 0.2s;
-      ">Configurações</button>
+        font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;
+      ">Config</button>
     </div>
 
     <!-- ABA HISTÓRICO -->
@@ -805,14 +808,66 @@ header {
       </div>
     </div>
 
+    <!-- ABA BANCO DE HORAS -->
+    <div id="panelBanco" style="display:none;padding-bottom:24px;overflow-y:auto;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px;">
+        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px;">Saldo do Mês</div>
+        <div id="bancoCargaLabel" style="font-size:11px;color:var(--muted);margin-bottom:12px;"></div>
+        <div id="bancoSaldo" style="font-family:'Outfit',sans-serif;font-size:40px;font-weight:700;color:var(--green);line-height:1;">+00:00</div>
+        <div id="bancoSaldoLabel" style="font-size:12px;color:var(--muted);margin-top:4px;">horas extras acumuladas</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);">Progresso para folga</div>
+          <div id="bancoFolgaMeta" style="font-size:12px;color:var(--accent);font-weight:700;"></div>
+        </div>
+        <div style="background:var(--border);border-radius:8px;height:8px;overflow:hidden;">
+          <div id="bancoProgressBar" style="height:100%;background:var(--accent);border-radius:8px;width:0%;transition:width 0.5s;"></div>
+        </div>
+        <div id="bancoFolgaStatus" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;"></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px;">Resumo do Mês</div>
+        <div id="bancoResumo" style="font-size:13px;color:var(--text);line-height:2;"></div>
+      </div>
+      <div id="bancoPagamentoAviso" style="display:none;background:rgba(255,149,0,0.1);border:1px solid var(--orange);border-radius:16px;padding:14px;text-align:center;">
+        <div style="font-size:20px;margin-bottom:6px;">💰</div>
+        <div style="font-size:12px;color:var(--orange);font-weight:600;line-height:1.5;" id="bancoPagamentoTexto"></div>
+      </div>
+    </div>
+
     <!-- ABA CONFIGURAÇÕES -->
-    <div id="panelConfig" style="display:none;padding-bottom:24px;">
+    <div id="panelConfig" style="display:none;padding-bottom:24px;overflow-y:auto;">
+
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px;">Perfil</div>
+
       <div class="setting-group">
-        <div class="setting-label">Jornada diária (horas)</div>
-        <div class="setting-row">
-          <input class="setting-input" id="settingJornada" type="number" value="8" min="1" max="12">
+        <div class="setting-label">Carga horária diária</div>
+        <div style="display:flex;gap:8px;">
+          <button id="carga6btn" onclick="setCarga(6)" style="
+            flex:1;height:44px;border-radius:12px;cursor:pointer;transition:all 0.2s;
+            font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
+            border:1px solid var(--border);background:transparent;color:var(--muted);
+          ">6 horas</button>
+          <button id="carga8btn" onclick="setCarga(8)" style="
+            flex:1;height:44px;border-radius:12px;cursor:pointer;transition:all 0.2s;
+            font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
+            border:1px solid var(--accent);background:var(--accent-glow);color:var(--accent);
+          ">8 horas</button>
         </div>
       </div>
+
+      <div class="setting-group">
+        <div class="setting-label">Compensação de horas</div>
+        <button id="compensacaoBtn" onclick="toggleCompensacao()" style="
+          width:100%;height:44px;border-radius:12px;cursor:pointer;transition:all 0.2s;
+          font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;
+          border:1px solid var(--border);background:transparent;color:var(--muted);
+        ">Não sou optante</button>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px;">Jornada</div>
 
       <div class="setting-group">
         <div class="setting-label">Intervalo de almoço (minutos)</div>
@@ -823,24 +878,17 @@ header {
 
       <div class="setting-group">
         <div class="setting-label">Dias de trabalho</div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:4px;" id="diasSemana">
-          <!-- gerado pelo JS -->
-        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:4px;" id="diasSemana"></div>
       </div>
 
       <button class="save-btn" onclick="saveSettings()">SALVAR</button>
 
-      <!-- Reset -->
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">
-          Zona de perigo
-        </div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Zona de perigo</div>
         <button onclick="confirmarReset()" style="
-          width:100%; height:48px;
-          background:rgba(255,59,92,0.08); border:1px solid var(--red);
-          border-radius:14px; color:var(--red);
-          font-family:'Outfit',sans-serif; font-size:13px; font-weight:700;
-          cursor:pointer; letter-spacing:0.5px;
+          width:100%;height:48px;background:rgba(255,59,92,0.08);border:1px solid var(--red);
+          border-radius:14px;color:var(--red);font-family:'Outfit',sans-serif;
+          font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;
         ">🗑️ RESETAR TODOS OS DADOS</button>
       </div>
     </div>
@@ -1256,7 +1304,7 @@ header {
 
 <script>
 // ── STATE ──
-let settings = JSON.parse(localStorage.getItem('ponto_settings') || '{"jornada":8,"almoco":60,"diasTrabalho":[1,2,3,4,5]}');
+let settings = JSON.parse(localStorage.getItem('ponto_settings') || '{"jornada":8,"almoco":60,"diasTrabalho":[1,2,3,4,5],"cargaHoraria":8,"compensacao":false}');
 let todayRecords = JSON.parse(localStorage.getItem('ponto_today') || '{}');
 let history = JSON.parse(localStorage.getItem('ponto_history') || '[]');
 let listening = false;
@@ -2338,12 +2386,12 @@ function renderDiasSemana() {
   container.innerHTML = DIAS.map((d, i) => {
     const ativo = settings.diasTrabalho.includes(i);
     return `<button id="dia-${i}" onclick="toggleDia(${i})" style="
-      height:36px; border-radius:10px;
+      height:36px;border-radius:10px;
       border:1px solid ${ativo ? 'var(--accent)' : 'var(--border)'};
       background:${ativo ? 'var(--accent-glow)' : 'transparent'};
       color:${ativo ? 'var(--accent)' : 'var(--muted)'};
-      font-family:'Outfit',sans-serif; font-size:11px; font-weight:700;
-      cursor:pointer; transition:all 0.2s;
+      font-family:'Outfit',sans-serif;font-size:11px;font-weight:700;
+      cursor:pointer;transition:all 0.2s;
     ">${d}</button>`;
   }).join('');
 }
@@ -2355,21 +2403,67 @@ function toggleDia(i) {
   renderDiasSemana();
 }
 
+function setCarga(h) {
+  settings.cargaHoraria = h;
+  settings.jornada = h;
+  const btn6 = document.getElementById('carga6btn');
+  const btn8 = document.getElementById('carga8btn');
+  [btn6, btn8].forEach(b => {
+    b.style.borderColor = 'var(--border)';
+    b.style.background = 'transparent';
+    b.style.color = 'var(--muted)';
+  });
+  const active = h === 6 ? btn6 : btn8;
+  active.style.borderColor = 'var(--accent)';
+  active.style.background = 'var(--accent-glow)';
+  active.style.color = 'var(--accent)';
+}
+
+function toggleCompensacao() {
+  settings.compensacao = !settings.compensacao;
+  updateCompensacaoBtn();
+  updateBancoTab();
+}
+
+function updateCompensacaoBtn() {
+  const btn = document.getElementById('compensacaoBtn');
+  if (settings.compensacao) {
+    btn.textContent = '✅ Sou optante pela compensação';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.background = 'var(--green-glow)';
+    btn.style.color = 'var(--green)';
+  } else {
+    btn.textContent = 'Não sou optante';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--muted)';
+  }
+}
+
+function updateBancoTab() {
+  document.getElementById('tabBanco').style.display = settings.compensacao ? 'block' : 'none';
+}
+
 function switchTab(tab) {
-  const isHistorico = tab === 'historico';
-  document.getElementById('panelHistorico').style.display = isHistorico ? 'block' : 'none';
-  document.getElementById('panelConfig').style.display = isHistorico ? 'none' : 'block';
-  document.getElementById('tabHistorico').style.background = isHistorico ? 'var(--accent-glow)' : 'transparent';
-  document.getElementById('tabHistorico').style.borderColor = isHistorico ? 'var(--accent)' : 'var(--border)';
-  document.getElementById('tabHistorico').style.color = isHistorico ? 'var(--accent)' : 'var(--muted)';
-  document.getElementById('tabConfig').style.background = !isHistorico ? 'var(--accent-glow)' : 'transparent';
-  document.getElementById('tabConfig').style.borderColor = !isHistorico ? 'var(--accent)' : 'var(--border)';
-  document.getElementById('tabConfig').style.color = !isHistorico ? 'var(--accent)' : 'var(--muted)';
+  const tabs = ['historico', 'banco', 'config'];
+  tabs.forEach(t => {
+    const panel = document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1));
+    const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (!panel || !btn) return;
+    const active = t === tab;
+    panel.style.display = active ? 'block' : 'none';
+    btn.style.background = active ? 'var(--accent-glow)' : 'transparent';
+    btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.color = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  if (tab === 'banco') renderBancoHoras();
 }
 
 function openSettings() {
-  document.getElementById('settingJornada').value = settings.jornada;
   document.getElementById('settingAlmoco').value = settings.almoco;
+  setCarga(settings.cargaHoraria || settings.jornada);
+  updateCompensacaoBtn();
+  updateBancoTab();
   renderDiasSemana();
   renderHistory();
   switchTab('historico');
@@ -2383,11 +2477,118 @@ function closeSettingsOutside(e) {
 }
 
 function saveSettings() {
-  settings.jornada = parseInt(document.getElementById('settingJornada').value) || 8;
   settings.almoco = parseInt(document.getElementById('settingAlmoco').value) || 60;
+  settings.jornada = settings.cargaHoraria || settings.jornada;
   localStorage.setItem('ponto_settings', JSON.stringify(settings));
   document.getElementById('settingsModal').classList.remove('open');
   showBanner('✅', 'Configurações salvas', `${settings.jornada}h/dia · ${settings.almoco}min almoço`);
+}
+
+// ── BANCO DE HORAS ──
+function calcSaldoMes() {
+  const jornadaMs = settings.jornada * 60 * 60 * 1000;
+  const mesAtual = todayKey().slice(3); // mm/yyyy
+
+  // Junta dias do histórico + hoje do mês atual
+  const allDays = [];
+  const todayFiltered = { ...todayRecords };
+  delete todayFiltered._date;
+  if (Object.keys(todayFiltered).length > 0 && todayKey().slice(3) === mesAtual) {
+    allDays.push({ date: todayKey(), records: todayFiltered });
+  }
+  history.forEach(d => {
+    if (d.date && d.date.slice(3) === mesAtual) allDays.push(d);
+  });
+
+  let totalTrabalhadoMs = 0;
+  let totalEsperadoMs = 0;
+  let diasTrabalhados = 0;
+
+  allDays.forEach(day => {
+    if (!day.records.entrada || !day.records.saida) return;
+    diasTrabalhados++;
+    totalEsperadoMs += jornadaMs;
+    let trabMs = parseTime(day.records.saida) - parseTime(day.records.entrada);
+    if (day.records['almoco-ida'] && day.records['almoco-volta']) {
+      trabMs -= parseTime(day.records['almoco-volta']) - parseTime(day.records['almoco-ida']);
+    }
+    totalTrabalhadoMs += trabMs;
+  });
+
+  const saldoMs = totalTrabalhadoMs - totalEsperadoMs;
+  return { saldoMs, totalTrabalhadoMs, totalEsperadoMs, diasTrabalhados };
+}
+
+function formatMs(ms) {
+  const abs = Math.abs(ms);
+  const h = Math.floor(abs / 3600000);
+  const m = Math.floor((abs % 3600000) / 60000);
+  const sign = ms >= 0 ? '+' : '-';
+  return `${sign}${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+function renderBancoHoras() {
+  const { saldoMs, totalTrabalhadoMs, totalEsperadoMs, diasTrabalhados } = calcSaldoMes();
+  const carga = settings.cargaHoraria || settings.jornada;
+  const metaFolgaMs = carga * 60 * 60 * 1000; // 6h ou 8h para folga
+
+  // Saldo principal
+  const saldoEl = document.getElementById('bancoSaldo');
+  saldoEl.textContent = formatMs(saldoMs);
+  saldoEl.style.color = saldoMs >= 0 ? 'var(--green)' : 'var(--red)';
+
+  document.getElementById('bancoSaldoLabel').textContent =
+    saldoMs >= 0 ? 'horas extras acumuladas' : 'horas negativas';
+
+  document.getElementById('bancoCargaLabel').textContent =
+    `Jornada: ${carga}h/dia · ${diasTrabalhados} dia(s) fechado(s) este mês`;
+
+  // Progresso para folga
+  const extrasMs = Math.max(0, saldoMs);
+  const progress = Math.min((extrasMs / metaFolgaMs) * 100, 100);
+  document.getElementById('bancoProgressBar').style.width = progress + '%';
+  document.getElementById('bancoProgressBar').style.background =
+    progress >= 100 ? 'var(--green)' : 'var(--accent)';
+  document.getElementById('bancoFolgaMeta').textContent = `${carga}h necessárias`;
+
+  if (extrasMs >= metaFolgaMs) {
+    document.getElementById('bancoFolgaStatus').textContent =
+      '🎉 Você atingiu o saldo para solicitar uma folga ao gestor!';
+    document.getElementById('bancoFolgaStatus').style.color = 'var(--green)';
+  } else {
+    const falta = metaFolgaMs - extrasMs;
+    const faltaH = Math.floor(falta / 3600000);
+    const faltaM = Math.floor((falta % 3600000) / 60000);
+    document.getElementById('bancoFolgaStatus').textContent =
+      `Faltam ${String(faltaH).padStart(2,'0')}:${String(faltaM).padStart(2,'0')} para solicitar folga`;
+    document.getElementById('bancoFolgaStatus').style.color = 'var(--muted)';
+  }
+
+  // Resumo
+  const thStr = formatMs(totalTrabalhadoMs).replace('+','');
+  const teStr = formatMs(totalEsperadoMs).replace('+','');
+  document.getElementById('bancoResumo').innerHTML = `
+    <div>📅 Dias fechados: <strong>${diasTrabalhados}</strong></div>
+    <div>⏱️ Total trabalhado: <strong>${thStr}</strong></div>
+    <div>🎯 Total esperado: <strong>${teStr}</strong></div>
+    <div>📊 Saldo: <strong style="color:${saldoMs >= 0 ? 'var(--green)' : 'var(--red)'}">${formatMs(saldoMs)}</strong></div>
+  `;
+
+  // Aviso de pagamento — saldo positivo que não foi compensado
+  const avisoEl = document.getElementById('bancoPagamentoAviso');
+  if (extrasMs > 0 && extrasMs < metaFolgaMs) {
+    const eH = Math.floor(extrasMs / 3600000);
+    const eM = Math.floor((extrasMs % 3600000) / 60000);
+    avisoEl.style.display = 'block';
+    document.getElementById('bancoPagamentoTexto').textContent =
+      `Você tem ${String(eH).padStart(2,'0')}:${String(eM).padStart(2,'0')} de horas extras que serão pagas no salário caso não compensadas até o fim do mês.`;
+  } else if (extrasMs >= metaFolgaMs) {
+    avisoEl.style.display = 'block';
+    document.getElementById('bancoPagamentoTexto').textContent =
+      `Saldo suficiente para folga! Se não compensar até o fim do mês, o saldo restante será pago no salário.`;
+  } else {
+    avisoEl.style.display = 'none';
+  }
 }
 
 // ── HISTORY ──
