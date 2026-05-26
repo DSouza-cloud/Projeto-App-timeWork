@@ -1923,16 +1923,20 @@ function scheduleReminders(type, fromTime) {
   if (type === 'entrada') {
     if (timerJornada) clearTimeout(timerJornada);
     if (timerHoraExtra) clearTimeout(timerHoraExtra);
-    const fimJornada = new Date(fromTime.getTime() + jornadaMs + almocoMs);
+    const carga = settings.cargaHoraria || settings.jornada;
+    // 6h: saída = entrada + 6h (sem almoço obrigatório)
+    // 8h: saída = entrada + 8h + 60min almoço (almoço não registrado ainda)
+    const fimJornada = carga === 6
+      ? new Date(fromTime.getTime() + jornadaMs)
+      : new Date(fromTime.getTime() + jornadaMs + almocoMs);
     const msJornada = fimJornada - getNow();
-    dbg('⏱️ Timer jornada: ' + Math.round(msJornada/60000) + 'min até ' + fimJornada.toLocaleTimeString('pt-BR'));
+    dbg('⏱️ Timer jornada (' + carga + 'h): ' + Math.round(msJornada/60000) + 'min até ' + fimJornada.toLocaleTimeString('pt-BR'));
     if (msJornada > 0) {
       timerJornada = setTimeout(() => {
         const timeStr = fimJornada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         showBanner('🚀', 'Hora de ir embora!', 'Jornada completa às ' + timeStr);
         sendNativeNotif('🚀 Hora de ir embora!', 'Jornada completa às ' + timeStr);
         dbg('🚀 Alerta de fim de jornada disparado!');
-        // Agenda aviso de horas extras para 10 min depois
         timerHoraExtra = setTimeout(() => {
           showBanner('🔴', 'Você está em horas extras!!', 'Registre sua saída o quanto antes');
           playAlertSound();
@@ -2071,6 +2075,20 @@ function fecharAlmocoBanner() {
 function updatePreviewChips(type, registeredTime) {
   const almocoMs = settings.almoco * 60 * 1000;
   const jornadaMs = settings.jornada * 60 * 60 * 1000;
+  const carga = settings.cargaHoraria || settings.jornada;
+
+  if (type === 'entrada') {
+    // Para 6h: saída prevista = entrada + 6h (sem almoço obrigatório)
+    // Para 8h: saída prevista = entrada + 8h + 60min almoço
+    const saidaBase = carga === 6
+      ? new Date(parseTime(registeredTime).getTime() + jornadaMs)
+      : new Date(parseTime(registeredTime).getTime() + jornadaMs + almocoMs);
+    const saidaStr = saidaBase.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const chip = document.getElementById('chip-saida');
+    chip.className = 'status-chip preview';
+    chip.innerHTML = `<span class="chip-dot"></span><span>Saída</span><span class="chip-time" style="color:var(--accent);font-size:11px;">prev. ${saidaStr}</span>`;
+    dbg('🚀 Prévia de saída (entrada): ' + saidaStr + ' [' + carga + 'h]');
+  }
 
   if (type === 'almoco-ida') {
     const retorno = new Date(parseTime(registeredTime).getTime() + almocoMs);
@@ -2091,7 +2109,7 @@ function updatePreviewChips(type, registeredTime) {
     const chip = document.getElementById('chip-saida');
     chip.className = 'status-chip preview';
     chip.innerHTML = `<span class="chip-dot"></span><span>Saída</span><span class="chip-time" style="color:var(--accent);font-size:11px;">prev. ${saidaStr}</span>`;
-    dbg('🚀 Prévia de saída: ' + saidaStr);
+    dbg('🚀 Prévia de saída (pós-almoço): ' + saidaStr);
   }
 }
 
@@ -2504,7 +2522,7 @@ function saveSettings() {
   settings.jornada = settings.cargaHoraria || settings.jornada;
   localStorage.setItem('ponto_settings', JSON.stringify(settings));
   document.getElementById('settingsModal').classList.remove('open');
-  showBanner('✅', 'Configurações salvas', `${settings.jornada}h/dia · ${settings.almoco}min almoço`);
+  showBanner('✅', 'Configurações salvas', `Jornada: ${settings.jornada}h/dia`);
 }
 
 // ── BANCO DE HORAS ──
@@ -2751,6 +2769,7 @@ function init() {
   });
 
   // Restaura prévias
+  if (todayRecords['entrada'] && !todayRecords['saida'] && !todayRecords['almoco-ida']) updatePreviewChips('entrada', todayRecords['entrada']);
   if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) updatePreviewChips('almoco-ida', todayRecords['almoco-ida']);
   if (todayRecords['almoco-volta'] && !todayRecords['saida']) updatePreviewChips('almoco-volta', todayRecords['almoco-volta']);
 
@@ -2848,7 +2867,7 @@ function exportPDF() {
     </div>
     <div class="report-meta">
       Gerado em: ${new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}<br>
-      Jornada: ${settings.jornada}h/dia · Almoço: ${settings.almoco}min<br>
+      Jornada: ${settings.jornada}h/dia<br>
       Total de dias: ${allDays.length}
     </div>
   </div>
