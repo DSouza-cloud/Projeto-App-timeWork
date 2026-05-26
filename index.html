@@ -799,8 +799,30 @@ header {
 
     <!-- ABA HISTÓRICO -->
     <div id="panelHistorico" style="flex:1;overflow-y:auto;padding-bottom:24px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;">Registros</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="exportCSV()" title="Exportar CSV" style="
+            height:28px;padding:0 10px;border-radius:8px;cursor:pointer;
+            border:1px solid var(--border);background:var(--surface2);
+            color:var(--muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;
+            transition:all 0.2s;letter-spacing:0.5px;
+          " onmouseenter="this.style.borderColor='var(--green)';this.style.color='var(--green)'"
+             onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+            ⬇ CSV
+          </button>
+          <button onclick="exportPDF()" title="Exportar PDF" style="
+            height:28px;padding:0 10px;border-radius:8px;cursor:pointer;
+            border:1px solid var(--border);background:var(--surface2);
+            color:var(--muted);font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;
+            transition:all 0.2s;letter-spacing:0.5px;
+          " onmouseenter="this.style.borderColor='var(--red)';this.style.color='var(--red)'"
+             onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+            ⬇ PDF
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-start;margin-bottom:10px;">
         <div id="monthTabs" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;"></div>
       </div>
       <div class="history-list" id="historyList">
@@ -867,14 +889,6 @@ header {
       </div>
 
       <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
-      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px;">Jornada</div>
-
-      <div class="setting-group">
-        <div class="setting-label">Intervalo de almoço (minutos)</div>
-        <div class="setting-row">
-          <input class="setting-input" id="settingAlmoco" type="number" value="60" min="15" max="180">
-        </div>
-      </div>
 
       <div class="setting-group">
         <div class="setting-label">Dias de trabalho</div>
@@ -1873,6 +1887,9 @@ function scheduleReminders(type, fromTime) {
         sendNativeNotif('🍽️ Almoço acabando!', 'Hora de voltar ao trabalho!');
         dbg('🍽️ Alerta de almoço disparado!');
       }, ms);
+      scheduleSwNotif(ms - 5 * 60 * 1000 > 0 ? ms - 5 * 60 * 1000 : ms,
+        '⏰ Almoço quase acabando!', 'Faltam 5 minutos para voltar ao trabalho.', 'almoco-aviso', false);
+      scheduleSwNotif(ms, '🍽️ Hora de voltar!', 'Seu intervalo de almoço terminou.', 'almoco-fim', true);
     }
 
     // Aviso CLT — 1h50min de almoço (10 min antes do limite de 2h)
@@ -1923,6 +1940,10 @@ function scheduleReminders(type, fromTime) {
           dbg('🔴 Horas extras iniciadas');
         }, avisoExtraMs);
       }, msJornada);
+      const aviso15 = msJornada - 15 * 60 * 1000;
+      if (aviso15 > 0) scheduleSwNotif(aviso15, '⏳ Jornada quase completa!', 'Faltam 15 minutos para encerrar o expediente.', 'jornada-aviso', false);
+      scheduleSwNotif(msJornada, '🚀 Hora de ir embora!', 'Jornada completa. Não esqueça de registrar a saída!', 'jornada-fim', true);
+      scheduleSwNotif(msJornada + avisoExtraMs, '🔴 Horas extras!', 'Você já ultrapassou sua jornada em 10 minutos.', 'hora-extra', true);
     }
   }
 
@@ -1952,6 +1973,10 @@ function scheduleReminders(type, fromTime) {
           dbg('🔴 Horas extras iniciadas');
         }, avisoExtraMs);
       }, msJornada);
+      const aviso15 = msJornada - 15 * 60 * 1000;
+      if (aviso15 > 0) scheduleSwNotif(aviso15, '⏳ Jornada quase completa!', 'Faltam 15 minutos para encerrar o expediente.', 'jornada-aviso', false);
+      scheduleSwNotif(msJornada, '🚀 Hora de ir embora!', 'Jornada completa. Não esqueça de registrar a saída!', 'jornada-fim', true);
+      scheduleSwNotif(msJornada + avisoExtraMs, '🔴 Horas extras!', 'Você já ultrapassou sua jornada em 10 minutos.', 'hora-extra', true);
     }
   }
 }
@@ -2460,7 +2485,6 @@ function switchTab(tab) {
 }
 
 function openSettings() {
-  document.getElementById('settingAlmoco').value = settings.almoco;
   setCarga(settings.cargaHoraria || settings.jornada);
   updateCompensacaoBtn();
   updateBancoTab();
@@ -2477,7 +2501,6 @@ function closeSettingsOutside(e) {
 }
 
 function saveSettings() {
-  settings.almoco = parseInt(document.getElementById('settingAlmoco').value) || 60;
   settings.jornada = settings.cargaHoraria || settings.jornada;
   localStorage.setItem('ponto_settings', JSON.stringify(settings));
   document.getElementById('settingsModal').classList.remove('open');
@@ -2734,7 +2757,246 @@ function init() {
   renderHistory();
 }
 
+
+// ── EXPORTAÇÃO CSV ──
+function exportCSV() {
+  const ORDER = ['entrada', 'almoco-ida', 'almoco-volta', 'saida'];
+  const LABELS = { 'entrada': 'Entrada', 'almoco-ida': 'Almoço Saída', 'almoco-volta': 'Almoço Volta', 'saida': 'Saída' };
+
+  const allDays = [];
+  const todayFiltered = { ...todayRecords };
+  delete todayFiltered._date;
+  if (Object.keys(todayFiltered).length > 0) allDays.push({ date: todayKey(), records: todayFiltered });
+  history.forEach(d => allDays.push(d));
+
+  if (allDays.length === 0) { showBanner('⚠️', 'Nada para exportar', 'Sem registros no histórico'); return; }
+
+  const rows = [['Data', 'Entrada', 'Almoço Saída', 'Almoço Volta', 'Saída', 'Total Trabalhado']];
+  allDays.forEach(day => {
+    const r = day.records;
+    const total = calcTotal(r) || '';
+    rows.push([day.date, r['entrada']||'', r['almoco-ida']||'', r['almoco-volta']||'', r['saida']||'', total]);
+  });
+
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `TimeWork_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showBanner('✅', 'CSV exportado!', `${allDays.length} dia(s) exportado(s)`);
+}
+
+// ── EXPORTAÇÃO PDF ──
+function exportPDF() {
+  const allDays = [];
+  const todayFiltered = { ...todayRecords };
+  delete todayFiltered._date;
+  if (Object.keys(todayFiltered).length > 0) allDays.push({ date: todayKey(), records: todayFiltered });
+  history.forEach(d => allDays.push(d));
+
+  if (allDays.length === 0) { showBanner('⚠️', 'Nada para exportar', 'Sem registros no histórico'); return; }
+
+  const LABELS = { 'entrada':'Entrada','almoco-ida':'Almoço Saída','almoco-volta':'Almoço Volta','saida':'Saída' };
+  const ORDER = ['entrada','almoco-ida','almoco-volta','saida'];
+
+  // Agrupar por mês
+  const months = {};
+  allDays.forEach(day => {
+    const [dd, mm, yyyy] = day.date.split('/');
+    const key = mm + '/' + yyyy;
+    if (!months[key]) months[key] = [];
+    months[key].push(day);
+  });
+
+  const monthNames = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>TimeWork — Relatório</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Outfit', sans-serif; background: #fff; color: #1a1a2e; padding: 32px; max-width: 720px; margin: 0 auto; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid #00d4ff; padding-bottom: 16px; margin-bottom: 28px; }
+  .app-title { font-size: 28px; font-weight: 800; color: #00d4ff; letter-spacing: 3px; }
+  .report-meta { font-size: 12px; color: #666; text-align: right; line-height: 1.8; }
+  .month-title { font-size: 16px; font-weight: 700; color: #0a0f1e; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 12px; padding: 8px 12px; background: #f0faff; border-left: 4px solid #00d4ff; border-radius: 0 8px 8px 0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 13px; }
+  th { background: #0a0f1e; color: #00d4ff; padding: 8px 10px; text-align: left; font-weight: 700; letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e8edf5; color: #333; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fbff; }
+  .total-cell { font-weight: 700; color: #0a0f1e; }
+  .empty { color: #bbb; font-style: italic; }
+  .month-summary { display: flex; gap: 16px; margin-top: 8px; margin-bottom: 16px; }
+  .summary-chip { background: #f0faff; border: 1px solid #00d4ff22; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #555; }
+  .summary-chip strong { color: #0a0f1e; font-weight: 700; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e8edf5; font-size: 11px; color: #aaa; text-align: center; letter-spacing: 1px; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="app-title">TimeWork</div>
+      <div style="font-size:13px;color:#666;margin-top:4px;">Relatório de Ponto</div>
+    </div>
+    <div class="report-meta">
+      Gerado em: ${new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}<br>
+      Jornada: ${settings.jornada}h/dia · Almoço: ${settings.almoco}min<br>
+      Total de dias: ${allDays.length}
+    </div>
+  </div>
+
+  ${Object.entries(months).map(([monthKey, days]) => {
+    const [mm, yyyy] = monthKey.split('/');
+    const label = monthNames[parseInt(mm)] + ' ' + yyyy;
+
+    // Calc month totals
+    let totalWorkedMs = 0; let diasFechados = 0;
+    days.forEach(d => {
+      const ms = calcTotalMs(d.records);
+      if (ms > 0) { totalWorkedMs += ms; diasFechados++; }
+    });
+    const jornadaMs = settings.jornada * 60 * 60 * 1000;
+    const saldoMs = totalWorkedMs - (diasFechados * jornadaMs);
+    const fmtMs = (ms) => {
+      const abs = Math.abs(ms);
+      const h = Math.floor(abs/3600000); const m = Math.floor((abs%3600000)/60000);
+      return (ms<0?'-':'') + String(h).padStart(2,'0') + 'h' + String(m).padStart(2,'0');
+    };
+
+    return `
+    <div class="month-title">${label}</div>
+    <div class="month-summary">
+      <div class="summary-chip">Dias fechados: <strong>${diasFechados}</strong></div>
+      <div class="summary-chip">Total: <strong>${fmtMs(totalWorkedMs)}</strong></div>
+      <div class="summary-chip">Saldo: <strong style="color:${saldoMs>=0?'#00a86b':'#e74c3c'}">${saldoMs>=0?'+':''}${fmtMs(saldoMs)}</strong></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Data</th><th>Entrada</th><th>Almoço Saída</th><th>Almoço Volta</th><th>Saída</th><th>Total</th>
+      </tr></thead>
+      <tbody>
+        ${days.map(day => {
+          const r = day.records;
+          const total = calcTotal(r);
+          return `<tr>
+            <td><strong>${day.date}</strong></td>
+            <td>${r['entrada']||'<span class="empty">—</span>'}</td>
+            <td>${r['almoco-ida']||'<span class="empty">—</span>'}</td>
+            <td>${r['almoco-volta']||'<span class="empty">—</span>'}</td>
+            <td>${r['saida']||'<span class="empty">—</span>'}</td>
+            <td class="total-cell">${total||'<span class="empty">—</span>'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }).join('')}
+
+  <div class="footer">TimeWork · by Douglas Souza &mdash; D.Souza</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { win.focus(); win.print(); }, 600);
+  showBanner('✅', 'PDF pronto!', 'Janela de impressão aberta');
+}
+
+// ── SERVICE WORKER + PUSH NOTIFICATIONS ──
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    dbg('⚠️ Service Worker não suportado');
+    return;
+  }
+  try {
+    // Inline SW como blob para não precisar de arquivo separado
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => clients.claim());
+      self.addEventListener('push', e => {
+        const data = e.data ? e.data.json() : { title: 'TimeWork', body: '' };
+        e.waitUntil(self.registration.showNotification(data.title, {
+          body: data.body,
+          icon: data.icon || '⏰',
+          badge: data.badge || '',
+          tag: data.tag || 'timework',
+          renotify: true,
+          requireInteraction: data.requireInteraction || false,
+          vibrate: [200, 100, 200],
+          data: data
+        }));
+      });
+      self.addEventListener('notificationclick', e => {
+        e.notification.close();
+        e.waitUntil(clients.matchAll({ type: 'window' }).then(list => {
+          if (list.length > 0) { list[0].focus(); return; }
+          return clients.openWindow('/');
+        }));
+      });
+      // Timer messages from main thread
+      self.addEventListener('message', e => {
+        if (e.data && e.data.type === 'SCHEDULE_NOTIF') {
+          const { delay, title, body, tag, requireInteraction } = e.data;
+          setTimeout(() => {
+            self.registration.showNotification(title, {
+              body, tag: tag || 'timework', icon: '/icon-192.png',
+              requireInteraction: requireInteraction || false,
+              vibrate: [300, 100, 300, 100, 300],
+              renotify: true
+            });
+          }, delay);
+        }
+      });
+    `;
+
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+
+    // Tenta registrar; pode falhar em alguns contextos de segurança
+    const reg = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+    window._swReg = reg;
+    dbg('✅ Service Worker registrado');
+
+    // Pede permissão de notificação se ainda não pediu
+    if (Notification.permission === 'default') {
+      const perm = await Notification.requestPermission();
+      dbg('🔔 Permissão de notificação: ' + perm);
+    }
+  } catch(e) {
+    dbg('⚠️ SW não registrado (contexto sem HTTPS ou blob bloqueado): ' + e.message);
+    // Fallback: usa notificações normais sem SW
+  }
+}
+
+// Envia agendamento de notificação para o SW
+function scheduleSwNotif(delayMs, title, body, tag, requireInteraction) {
+  if (window._swReg && window._swReg.active) {
+    window._swReg.active.postMessage({
+      type: 'SCHEDULE_NOTIF',
+      delay: delayMs, title, body, tag,
+      requireInteraction: requireInteraction || false
+    });
+    dbg('📬 Notif agendada via SW: "' + title + '" em ' + Math.round(delayMs/1000) + 's');
+  } else {
+    // Fallback: agenda via setTimeout + Notification API normal
+    setTimeout(() => sendNativeNotif(title, body), delayMs);
+    dbg('📬 Notif agendada via setTimeout: "' + title + '"');
+  }
+}
+
+registerServiceWorker();
+
 restoreWorker();
+restoreTimers();
+init();
 if (todayRecords['saida']) lockAllButtons();
 dbg('🚀 App carregado');
 </script>
