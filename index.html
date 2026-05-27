@@ -1795,15 +1795,16 @@ function register(type) {
 
   // Confirmação de saída antecipada
   if (type === 'saida' && todayRecords['entrada']) {
-    const jornadaMs = settings.jornada * 60 * 60 * 1000;
+    const { efetivaMins } = getJornadaConfig();
+    const jornadaEfetivaMs = efetivaMins * 60 * 1000;
     let workedMs = getNow() - parseTime(todayRecords['entrada']);
     if (todayRecords['almoco-ida'] && todayRecords['almoco-volta']) {
       workedMs -= parseTime(todayRecords['almoco-volta']) - parseTime(todayRecords['almoco-ida']);
     } else if (todayRecords['almoco-ida']) {
       workedMs -= getNow() - parseTime(todayRecords['almoco-ida']);
     }
-    const faltaMs = jornadaMs - workedMs;
-    if (faltaMs > 10 * 60 * 1000) { // alerta só se faltar mais de 10min (tolerância)
+    const faltaMs = jornadaEfetivaMs - workedMs;
+    if (faltaMs > 10 * 60 * 1000) {
       const faltaMin = Math.floor(faltaMs / 60000);
       const faltaH = Math.floor(faltaMin / 60);
       const faltaM = faltaMin % 60;
@@ -1870,8 +1871,9 @@ let timerHoraExtra = null;
 
 function scheduleReminders(type, fromTime) {
   const almocoMs = settings.almoco * 60 * 1000;
-  const jornadaMs = settings.jornada * 60 * 60 * 1000;
-  const avisoExtraMs = 10 * 60 * 1000; // aviso 10 min antes das horas extras
+  const { jornadaMs, efetivaMins, extraIniciaMs } = getJornadaConfig();
+  const jornadaEfetivaMs = efetivaMins * 60 * 1000;
+  const avisoExtraMs = 10 * 60 * 1000;
 
   if (type === 'almoco-ida') {
     if (timerAlmoco) clearTimeout(timerAlmoco);
@@ -1924,10 +1926,10 @@ function scheduleReminders(type, fromTime) {
     if (timerJornada) clearTimeout(timerJornada);
     if (timerHoraExtra) clearTimeout(timerHoraExtra);
     const carga = settings.cargaHoraria || settings.jornada;
-    // 6h: saída = entrada + 6h (sem almoço obrigatório)
-    // 8h: saída = entrada + 8h + 60min almoço (almoço não registrado ainda)
+    // 6h: saída = entrada + 6h15min (jornada efetiva com lanche)
+    // 8h: saída = entrada + 8h + 60min almoço (almoço ainda não registrado)
     const fimJornada = carga === 6
-      ? new Date(fromTime.getTime() + jornadaMs)
+      ? new Date(fromTime.getTime() + jornadaEfetivaMs)
       : new Date(fromTime.getTime() + jornadaMs + almocoMs);
     const msJornada = fimJornada - getNow();
     dbg('⏱️ Timer jornada (' + carga + 'h): ' + Math.round(msJornada/60000) + 'min até ' + fimJornada.toLocaleTimeString('pt-BR'));
@@ -1940,14 +1942,14 @@ function scheduleReminders(type, fromTime) {
         timerHoraExtra = setTimeout(() => {
           showBanner('🔴', 'Você está em horas extras!!', 'Registre sua saída o quanto antes');
           playAlertSound();
-          sendNativeNotif('🔴 Horas extras!', 'Você ultrapassou sua jornada em 10 minutos.');
+          sendNativeNotif('🔴 Horas extras!', 'Você ultrapassou sua jornada.');
           dbg('🔴 Horas extras iniciadas');
         }, avisoExtraMs);
       }, msJornada);
       const aviso15 = msJornada - 15 * 60 * 1000;
       if (aviso15 > 0) scheduleSwNotif(aviso15, '⏳ Jornada quase completa!', 'Faltam 15 minutos para encerrar o expediente.', 'jornada-aviso', false);
       scheduleSwNotif(msJornada, '🚀 Hora de ir embora!', 'Jornada completa. Não esqueça de registrar a saída!', 'jornada-fim', true);
-      scheduleSwNotif(msJornada + avisoExtraMs, '🔴 Horas extras!', 'Você já ultrapassou sua jornada em 10 minutos.', 'hora-extra', true);
+      scheduleSwNotif(msJornada + avisoExtraMs, '🔴 Horas extras!', 'Você já ultrapassou sua jornada.', 'hora-extra', true);
     }
   }
 
@@ -1959,28 +1961,28 @@ function scheduleReminders(type, fromTime) {
     if (todayRecords['almoco-ida']) {
       workedMs = parseTime(todayRecords['almoco-ida']) - entradaTime;
     }
-    const remaining = jornadaMs - workedMs;
+    // Restante = jornada efetiva (com lanche embutido para 6h) − já trabalhado antes do almoço
+    const remaining = jornadaEfetivaMs - workedMs;
     const exitTime = new Date(fromTime.getTime() + remaining);
     const msJornada = exitTime - getNow();
-    dbg('⏱️ Timer jornada recalculado: ' + Math.round(msJornada/60000) + 'min até ' + exitTime.toLocaleTimeString('pt-BR'));
+    dbg('⏱️ Timer jornada recalculado (pós-almoço): ' + Math.round(msJornada/60000) + 'min até ' + exitTime.toLocaleTimeString('pt-BR'));
     if (msJornada > 0) {
       timerJornada = setTimeout(() => {
         const timeStr = exitTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         showBanner('🚀', 'Hora de ir embora!', 'Jornada completa às ' + timeStr);
         sendNativeNotif('🚀 Hora de ir embora!', 'Jornada completa às ' + timeStr);
         dbg('🚀 Alerta de fim de jornada disparado!');
-        // Agenda aviso de horas extras para 10 min depois
         timerHoraExtra = setTimeout(() => {
           showBanner('🔴', 'Você está em horas extras!!', 'Registre sua saída o quanto antes');
           playAlertSound();
-          sendNativeNotif('🔴 Horas extras!', 'Você ultrapassou sua jornada em 10 minutos.');
+          sendNativeNotif('🔴 Horas extras!', 'Você ultrapassou sua jornada.');
           dbg('🔴 Horas extras iniciadas');
         }, avisoExtraMs);
       }, msJornada);
       const aviso15 = msJornada - 15 * 60 * 1000;
       if (aviso15 > 0) scheduleSwNotif(aviso15, '⏳ Jornada quase completa!', 'Faltam 15 minutos para encerrar o expediente.', 'jornada-aviso', false);
       scheduleSwNotif(msJornada, '🚀 Hora de ir embora!', 'Jornada completa. Não esqueça de registrar a saída!', 'jornada-fim', true);
-      scheduleSwNotif(msJornada + avisoExtraMs, '🔴 Horas extras!', 'Você já ultrapassou sua jornada em 10 minutos.', 'hora-extra', true);
+      scheduleSwNotif(msJornada + avisoExtraMs, '🔴 Horas extras!', 'Você já ultrapassou sua jornada.', 'hora-extra', true);
     }
   }
 }
@@ -2078,16 +2080,15 @@ function updatePreviewChips(type, registeredTime) {
   const carga = settings.cargaHoraria || settings.jornada;
 
   if (type === 'entrada') {
-    // Para 6h: saída prevista = entrada + 6h (sem almoço obrigatório)
-    // Para 8h: saída prevista = entrada + 8h + 60min almoço
-    const saidaBase = carga === 6
-      ? new Date(parseTime(registeredTime).getTime() + jornadaMs)
-      : new Date(parseTime(registeredTime).getTime() + jornadaMs + almocoMs);
-    const saidaStr = saidaBase.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const chip = document.getElementById('chip-saida');
-    chip.className = 'status-chip preview';
-    chip.innerHTML = `<span class="chip-dot"></span><span>Saída</span><span class="chip-time" style="color:var(--accent);font-size:11px;">prev. ${saidaStr}</span>`;
-    dbg('🚀 Prévia de saída (entrada): ' + saidaStr + ' [' + carga + 'h]');
+    if (carga === 6) {
+      const { efetivaMins } = getJornadaConfig();
+      const saidaBase = new Date(parseTime(registeredTime).getTime() + efetivaMins * 60 * 1000);
+      const saidaStr = saidaBase.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const chip = document.getElementById('chip-saida');
+      chip.className = 'status-chip preview';
+      chip.innerHTML = `<span class="chip-dot"></span><span>Saída</span><span class="chip-time" style="color:var(--accent);font-size:11px;">prev. ${saidaStr}</span>`;
+      dbg('🚀 Prévia de saída (entrada 6h): ' + saidaStr);
+    }
   }
 
   if (type === 'almoco-ida') {
@@ -2099,11 +2100,13 @@ function updatePreviewChips(type, registeredTime) {
   }
 
   if (type === 'almoco-volta') {
+    const { efetivaMins } = getJornadaConfig();
+    const jornadaEfetivaMs = efetivaMins * 60 * 1000;
     const entradaTime = parseTime(todayRecords['entrada']);
     const idaTime = parseTime(todayRecords['almoco-ida']);
     const voltaTime = parseTime(registeredTime);
     const trabalhado = idaTime - entradaTime;
-    const restante = jornadaMs - trabalhado;
+    const restante = jornadaEfetivaMs - trabalhado;
     const saidaPrev = new Date(voltaTime.getTime() + restante);
     const saidaStr = saidaPrev.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const chip = document.getElementById('chip-saida');
@@ -2162,6 +2165,27 @@ function showBanner(icon, title, sub) {
   bannerTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
+// ── HELPER: JORNADA EFETIVA E TOLERÂNCIA POR CARGA ──
+// 6h: jornada efetiva = 6h15min (inclui 15min lanche), tolerância = 10min → extra após 6h25min
+// 8h: jornada efetiva = 8h, tolerância = 10min → extra após 8h10min
+function getJornadaConfig() {
+  const carga = settings.cargaHoraria || settings.jornada;
+  if (carga === 6) {
+    return {
+      jornadaMs: 6 * 60 * 60 * 1000,          // 6h — base para cálculo de progresso
+      efetivaMins: 6 * 60 + 15,                // 6h15min — jornada real com lanche
+      toleranciaMins: 10,                       // 10min de tolerância
+      extraIniciaMs: (6 * 60 + 25) * 60 * 1000 // horas extras após 6h25min
+    };
+  }
+  return {
+    jornadaMs: 8 * 60 * 60 * 1000,
+    efetivaMins: 8 * 60,
+    toleranciaMins: 10,
+    extraIniciaMs: (8 * 60 + 10) * 60 * 1000
+  };
+}
+
 // ── CONTADOR DE HORAS TRABALHADAS ──
 let workerInterval = null;
 let workerAccumMs = 0;   // ms acumulados antes da pausa atual
@@ -2169,19 +2193,15 @@ let workerStart = null;  // timestamp de quando o contador está rodando
 
 function workerTick() {
   const totalMs = workerAccumMs + (workerStart ? getNow().getTime() - workerStart : 0);
-  const jornadaMs = settings.jornada * 60 * 60 * 1000;
-  const extraMs = totalMs - jornadaMs;
-  const isExtra = extraMs > 0;
+  const { jornadaMs, extraIniciaMs } = getJornadaConfig();
+  const extraMs = totalMs - extraIniciaMs; // extra real = total − (jornada efetiva + tolerância)
+  const isExtraReal = extraMs > 0;
 
-  const toleranciaMs = 10 * 60 * 1000;
-  const isExtraReal = extraMs > toleranciaMs;
-
-  // Display — mostra horas extras em vermelho somente após tolerância
+  // Display — mostra horas extras em vermelho somente após jornada efetiva + tolerância
   if (isExtraReal) {
-    const extraReal = extraMs - toleranciaMs;
-    const eh = Math.floor(extraReal / 3600000);
-    const em = Math.floor((extraReal % 3600000) / 60000);
-    const es = Math.floor((extraReal % 60000) / 1000);
+    const eh = Math.floor(extraMs / 3600000);
+    const em = Math.floor((extraMs % 3600000) / 60000);
+    const es = Math.floor((extraMs % 60000) / 1000);
     const extraDisplay = eh > 0
       ? `+${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`
       : `+${String(em).padStart(2,'0')}:${String(es).padStart(2,'0')}`;
@@ -2198,19 +2218,18 @@ function workerTick() {
     document.getElementById('workerTime').style.color = 'var(--text)';
   }
 
-  // Anel principal — completa em 8h e trava no topo
+  // Anel principal — completa na jornada base (6h ou 8h) e trava no topo
   const progress = Math.min(totalMs / jornadaMs, 1);
   const circumference = 238.8;
   document.getElementById('workerRing').style.strokeDashoffset = circumference * (1 - progress);
   document.getElementById('workerRing').style.stroke =
     progress < 0.75 ? 'var(--green)' : progress < 1 ? 'var(--orange)' : 'var(--accent)';
 
-  // Anel de horas extras (anel interno vermelho) — só após tolerância de 10min
+  // Anel de horas extras — só após jornada efetiva + tolerância
   const extraRing = document.getElementById('extraRing');
-  if (extraMs > toleranciaMs) {
-    const extraReal = extraMs - toleranciaMs;
+  if (isExtraReal) {
     extraRing.style.display = 'block';
-    const extraProgress = Math.min(extraReal / (30 * 60 * 1000), 1);
+    const extraProgress = Math.min(extraMs / (30 * 60 * 1000), 1);
     extraRing.style.strokeDashoffset = 207.3 * (1 - extraProgress);
   } else {
     extraRing.style.display = 'none';
@@ -2769,7 +2788,8 @@ function init() {
   });
 
   // Restaura prévias
-  if (todayRecords['entrada'] && !todayRecords['saida'] && !todayRecords['almoco-ida']) updatePreviewChips('entrada', todayRecords['entrada']);
+  const carga = settings.cargaHoraria || settings.jornada;
+  if (todayRecords['entrada'] && !todayRecords['saida'] && !todayRecords['almoco-ida'] && carga === 6) updatePreviewChips('entrada', todayRecords['entrada']);
   if (todayRecords['almoco-ida'] && !todayRecords['almoco-volta']) updatePreviewChips('almoco-ida', todayRecords['almoco-ida']);
   if (todayRecords['almoco-volta'] && !todayRecords['saida']) updatePreviewChips('almoco-volta', todayRecords['almoco-volta']);
 
