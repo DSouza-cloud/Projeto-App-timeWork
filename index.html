@@ -2562,6 +2562,8 @@ function calcSaldoMes() {
 
   let totalTrabalhadoMs = 0;
   let totalEsperadoMs = 0;
+  let totalExtrasMs = 0;
+  let totalNegativasMs = 0;
   let diasTrabalhados = 0;
 
   allDays.forEach(day => {
@@ -2573,10 +2575,13 @@ function calcSaldoMes() {
       trabMs -= parseTime(day.records['almoco-volta']) - parseTime(day.records['almoco-ida']);
     }
     totalTrabalhadoMs += trabMs;
+    const diaSaldo = trabMs - jornadaMs;
+    if (diaSaldo > 0) totalExtrasMs += diaSaldo;
+    else totalNegativasMs += Math.abs(diaSaldo);
   });
 
   const saldoMs = totalTrabalhadoMs - totalEsperadoMs;
-  return { saldoMs, totalTrabalhadoMs, totalEsperadoMs, diasTrabalhados };
+  return { saldoMs, totalTrabalhadoMs, totalEsperadoMs, totalExtrasMs, totalNegativasMs, diasTrabalhados };
 }
 
 function formatMs(ms) {
@@ -2625,13 +2630,26 @@ function renderBancoHoras() {
   }
 
   // Resumo
-  const thStr = formatMs(totalTrabalhadoMs).replace('+','');
-  const teStr = formatMs(totalEsperadoMs).replace('+','');
+  const { totalExtrasMs, totalNegativasMs } = calcSaldoMes();
+  const extrasStr = formatMs(totalExtrasMs).replace('+','');
+  const negativasStr = formatMs(-totalNegativasMs).replace('-','');
   document.getElementById('bancoResumo').innerHTML = `
-    <div>📅 Dias fechados: <strong>${diasTrabalhados}</strong></div>
-    <div>⏱️ Total trabalhado: <strong>${thStr}</strong></div>
-    <div>🎯 Total esperado: <strong>${teStr}</strong></div>
-    <div>📊 Saldo: <strong style="color:${saldoMs >= 0 ? 'var(--green)' : 'var(--red)'}">${formatMs(saldoMs)}</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--muted)">📅 Dias fechados</span>
+      <strong>${diasTrabalhados}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--muted)">📈 Total de horas extras</span>
+      <strong style="color:var(--green)">${extrasStr}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--muted)">📉 Total de horas negativas</span>
+      <strong style="color:${totalNegativasMs > 0 ? 'var(--red)' : 'var(--muted)'}">${totalNegativasMs > 0 ? '-' + negativasStr : '00:00'}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;">
+      <span style="color:var(--muted)">📊 Saldo de horas</span>
+      <strong style="color:${saldoMs >= 0 ? 'var(--green)' : 'var(--red)'}">${formatMs(saldoMs)}</strong>
+    </div>
   `;
 
   // Aviso de pagamento — saldo positivo que não foi compensado
