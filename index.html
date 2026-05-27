@@ -659,19 +659,30 @@ header {
 
       <button class="settings-btn" onclick="openSettings()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;font-size:14px;">⚙</button>
 
+      <!-- TOGGLE CARGA — ao lado da engrenagem -->
+      <div style="position:absolute;top:16px;right:54px;display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <span style="font-family:'Outfit',sans-serif;font-size:8px;font-weight:500;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">jornada</span>
+        <div id="cargaToggle" onclick="toggleCarga()" style="
+          display:inline-flex;align-items:center;
+          background:var(--surface2);border:1px solid var(--border);
+          border-radius:20px;padding:2px;cursor:pointer;
+          transition:all 0.2s;user-select:none;
+        ">
+          <div id="cargaOpt6" style="padding:3px 9px;border-radius:16px;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;transition:all 0.2s;">6h</div>
+          <div id="cargaOpt8" style="padding:3px 9px;border-radius:16px;font-family:'Outfit',sans-serif;font-size:10px;font-weight:700;transition:all 0.2s;">8h</div>
+        </div>
+      </div>
+
       <!-- CONTADOR CIRCULAR -->
-      <div style="margin-top:4px;">
+      <div style="margin-top:0;align-self:flex-end;padding-bottom:2px;">
         <div style="position:relative;width:90px;height:90px;">
           <svg width="90" height="90" style="transform:rotate(-90deg);position:absolute;inset:0;">
-            <!-- Trilha base -->
             <circle cx="45" cy="45" r="38" fill="none" stroke="var(--border)" stroke-width="4"/>
-            <!-- Anel jornada normal -->
             <circle id="workerRing" cx="45" cy="45" r="38" fill="none"
               stroke="var(--accent)" stroke-width="4"
               stroke-dasharray="238.8" stroke-dashoffset="238.8"
               stroke-linecap="round"
               style="transition:stroke-dashoffset 1s linear, stroke 0.5s"/>
-            <!-- Anel horas extras (interno) -->
             <circle cx="45" cy="45" r="33" fill="none" stroke="transparent" stroke-width="4"/>
             <circle id="extraRing" cx="45" cy="45" r="33" fill="none"
               stroke="var(--red)" stroke-width="5"
@@ -861,23 +872,6 @@ header {
     <!-- ABA CONFIGURAÇÕES -->
     <div id="panelConfig" style="display:none;padding-bottom:24px;overflow-y:auto;">
 
-      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px;">Perfil</div>
-
-      <div class="setting-group">
-        <div class="setting-label">Carga horária diária</div>
-        <div style="display:flex;gap:8px;">
-          <button id="carga6btn" onclick="setCarga(6)" style="
-            flex:1;height:44px;border-radius:12px;cursor:pointer;transition:all 0.2s;
-            font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
-            border:1px solid var(--border);background:transparent;color:var(--muted);
-          ">6 horas</button>
-          <button id="carga8btn" onclick="setCarga(8)" style="
-            flex:1;height:44px;border-radius:12px;cursor:pointer;transition:all 0.2s;
-            font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
-            border:1px solid var(--accent);background:var(--accent-glow);color:var(--accent);
-          ">8 horas</button>
-        </div>
-      </div>
 
       <div class="setting-group">
         <div class="setting-label">Compensação de horas</div>
@@ -2468,17 +2462,32 @@ function toggleDia(i) {
 function setCarga(h) {
   settings.cargaHoraria = h;
   settings.jornada = h;
-  const btn6 = document.getElementById('carga6btn');
-  const btn8 = document.getElementById('carga8btn');
-  [btn6, btn8].forEach(b => {
-    b.style.borderColor = 'var(--border)';
-    b.style.background = 'transparent';
-    b.style.color = 'var(--muted)';
-  });
-  const active = h === 6 ? btn6 : btn8;
-  active.style.borderColor = 'var(--accent)';
-  active.style.background = 'var(--accent-glow)';
-  active.style.color = 'var(--accent)';
+  renderCargaToggle();
+}
+
+function toggleCarga() {
+  const atual = settings.cargaHoraria || settings.jornada;
+  setCarga(atual === 6 ? 8 : 6);
+  localStorage.setItem('ponto_settings', JSON.stringify(settings));
+  showBanner('⏱️', 'Jornada alterada', `Carga horária: ${settings.jornada}h/dia`);
+}
+
+function renderCargaToggle() {
+  const carga = settings.cargaHoraria || settings.jornada;
+  const opt6 = document.getElementById('cargaOpt6');
+  const opt8 = document.getElementById('cargaOpt8');
+  if (!opt6 || !opt8) return;
+  if (carga === 6) {
+    opt6.style.background = 'var(--accent)';
+    opt6.style.color = 'var(--bg)';
+    opt8.style.background = 'transparent';
+    opt8.style.color = 'var(--muted)';
+  } else {
+    opt8.style.background = 'var(--accent)';
+    opt8.style.color = 'var(--bg)';
+    opt6.style.background = 'transparent';
+    opt6.style.color = 'var(--muted)';
+  }
 }
 
 function toggleCompensacao() {
@@ -2522,7 +2531,6 @@ function switchTab(tab) {
 }
 
 function openSettings() {
-  setCarga(settings.cargaHoraria || settings.jornada);
   updateCompensacaoBtn();
   updateBancoTab();
   renderDiasSemana();
@@ -3050,6 +3058,7 @@ function scheduleSwNotif(delayMs, title, body, tag, requireInteraction) {
 }
 
 registerServiceWorker();
+renderCargaToggle();
 
 restoreWorker();
 restoreTimers();
