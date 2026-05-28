@@ -749,36 +749,32 @@ header {
     </div>
     </div>
 
-    <!-- Quick actions -->
-    <div class="quick-actions">
-      <button class="action-btn entrada" id="btn-entrada" onclick="register('entrada')">
-        <div class="action-header">
-          <span class="action-icon">🟢</span>
-          <span class="action-label">ENTRADA</span>
+    <!-- BOTÃO ÚNICO SEQUENCIAL -->
+    <div style="padding: 8px 0 16px;">
+
+      <!-- Botão principal -->
+      <button id="mainActionBtn" onclick="registerNext()" style="
+        width:100%; height:72px;
+        border-radius:20px;
+        border:2px solid var(--accent);
+        background:var(--accent-glow);
+        display:flex; align-items:center; justify-content:center; gap:14px;
+        cursor:pointer; transition:all 0.2s;
+        font-family:'Outfit',sans-serif;
+      ">
+        <span id="mainActionIcon" style="font-size:28px;">🟢</span>
+        <div style="text-align:left;">
+          <div id="mainActionLabel" style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:0.5px;">REGISTRAR ENTRADA</div>
+          <div id="mainActionSub" style="font-size:11px;color:var(--muted);margin-top:2px;">Toque para registrar</div>
         </div>
-        <span class="action-time" id="time-entrada">—</span>
       </button>
-      <button class="action-btn almoco-ida" id="btn-almoco-ida" onclick="register('almoco-ida')">
-        <div class="action-header">
-          <span class="action-icon">🍽️</span>
-          <span class="action-label">ALMOÇO IDA</span>
-        </div>
-        <span class="action-time" id="time-almoco-ida">—</span>
-      </button>
-      <button class="action-btn almoco-volta" id="btn-almoco-volta" onclick="register('almoco-volta')">
-        <div class="action-header">
-          <span class="action-icon">↩️</span>
-          <span class="action-label">ALMOÇO VOLTA</span>
-        </div>
-        <span class="action-time" id="time-almoco-volta">—</span>
-      </button>
-      <button class="action-btn saida" id="btn-saida" onclick="register('saida')">
-        <div class="action-header">
-          <span class="action-icon">🔴</span>
-          <span class="action-label">SAÍDA</span>
-        </div>
-        <span class="action-time" id="time-saida">—</span>
-      </button>
+
+      <!-- Registros do dia -->
+      <div id="dayRecords" style="
+        margin-top:14px;
+        display:flex; flex-direction:column; gap:8px;
+      "></div>
+
     </div>
 
   </div>
@@ -1376,9 +1372,8 @@ function recheckTimers() {
     }
     todayRecords = { _date: todayKey() };
     localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
-    // Reset UI
+    // Reset UI chips
     ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
-      document.getElementById('time-' + type).textContent = '—';
       const chip = document.getElementById(TYPES[type].chip);
       chip.className = 'status-chip';
       chip.innerHTML = `<span class="chip-dot"></span><span>${TYPES[type].label}</span>`;
@@ -1389,12 +1384,8 @@ function recheckTimers() {
     document.getElementById('workerTime').style.color = 'var(--text)';
     document.getElementById('extraRing').style.display = 'none';
     document.getElementById('workerRing').style.strokeDashoffset = '238.8';
-    ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
-      const btn = document.getElementById('btn-' + type);
-      btn.style.opacity = ''; btn.style.filter = ''; btn.style.cursor = '';
-    });
-    fecharQuickDrawer();
     renderHistory();
+    renderDayRecords();
     dbg('🌅 Novo dia detectado — registros zerados');
     return;
   }
@@ -1536,7 +1527,6 @@ function confirmarSaidaAntecipada() {
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   todayRecords['saida'] = timeStr;
   localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
-  document.getElementById('time-saida').textContent = timeStr;
   const chip = document.getElementById('chip-saida');
   chip.className = 'status-chip active';
   chip.innerHTML = `<span class="chip-dot pulse"></span><span>Saída</span><span class="chip-time">${timeStr}</span>`;
@@ -1545,6 +1535,7 @@ function confirmarSaidaAntecipada() {
   workerUpdateOnRegister('saida');
   setTimeout(() => lockAllButtons(), 1500);
   renderHistory();
+  renderDayRecords();
   dbg('🔴 Saída antecipada confirmada às ' + timeStr);
 }
 
@@ -1579,14 +1570,8 @@ function fecharExpediente() {
 }
 
 function lockAllButtons() {
-  ['entrada','almoco-ida','almoco-volta','saida'].forEach(type => {
-    const btn = document.getElementById('btn-' + type);
-    if (!todayRecords[type]) {
-      btn.style.opacity = '0.25';
-      btn.style.filter = 'grayscale(1)';
-      btn.style.cursor = 'not-allowed';
-    }
-  });
+  // Bloqueia o botão sequencial
+  updateMainBtn();
   // Bloquear microfone de registrar
   document.getElementById('voiceHint').innerHTML =
     '<strong style="color:var(--muted)">🌙 Expediente encerrado</strong><br>Próxima marcação amanhã';
@@ -1619,7 +1604,6 @@ function confirmarAlmocoAntecipado() {
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   todayRecords['almoco-ida'] = timeStr;
   localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
-  document.getElementById('time-almoco-ida').textContent = timeStr;
   const chip = document.getElementById('chip-almoco-ida');
   chip.className = 'status-chip active';
   chip.innerHTML = `<span class="chip-dot pulse"></span><span>Almoço Saída</span><span class="chip-time">${timeStr}</span>`;
@@ -1629,6 +1613,7 @@ function confirmarAlmocoAntecipado() {
   workerUpdateOnRegister('almoco-ida');
   scheduleReminders('almoco-ida', now);
   renderHistory();
+  renderDayRecords();
 }
 
 // ── BLOQUEIO DE HORÁRIO ──
@@ -1751,14 +1736,9 @@ function register(type) {
     const timeStr = todayRecords[type];
     showBanner('🔒', TYPES[type].label + ' já registrada!', 'Registrada às ' + timeStr + ' — não é possível repetir.');
     playBlockSound();
-    const btn = document.getElementById('btn-' + type);
-    btn.style.transition = 'all 0.1s';
-    btn.style.transform = 'scale(0.95)';
-    btn.style.borderColor = 'var(--red)';
-    setTimeout(() => {
-      btn.style.transform = '';
-      btn.style.borderColor = '';
-    }, 600);
+    // Shake no botão sequencial
+    const mb = document.getElementById('mainActionBtn');
+    if (mb) { mb.style.transform = 'scale(0.97)'; setTimeout(() => { mb.style.transform = ''; }, 300); }
     dbg('🔒 Tentativa duplicada: ' + type + ' (já registrado às ' + timeStr + ')');
     return;
   }
@@ -1813,17 +1793,12 @@ function register(type) {
   todayRecords[type] = timeStr;
   localStorage.setItem('ponto_today', JSON.stringify(todayRecords));
 
-  // Flash e desabilita botão após registro
-  const btn = document.getElementById('btn-' + type);
-  btn.classList.add('flash');
-  document.getElementById('time-' + type).textContent = timeStr;
-  setTimeout(() => {
-    btn.classList.remove('flash');
-    btn.style.opacity = '0.4';
-    btn.style.filter = 'grayscale(0.6)';
-    btn.style.cursor = 'not-allowed';
-    btn.style.pointerEvents = 'none';
-  }, 600);
+  // Flash no botão sequencial
+  const mainBtn = document.getElementById('mainActionBtn');
+  if (mainBtn) {
+    mainBtn.style.transform = 'scale(0.97)';
+    setTimeout(() => { mainBtn.style.transform = ''; }, 150);
+  }
 
   // Update chip
   const chip = document.getElementById(TYPES[type].chip);
@@ -1850,12 +1825,9 @@ function register(type) {
     setTimeout(() => lockAllButtons(), 1500);
   }
 
-  // Atualiza gaveta de registro rápido
-
   // Update history view
   renderHistory();
-
-  setTimeout(() => btn.classList.remove('flash'), 600);
+  renderDayRecords();
 }
 
 // ── REMINDERS ──
@@ -1895,9 +1867,14 @@ function scheduleReminders(type, fromTime) {
     const msCLTmax = fromTime.getTime() + limiteCLT - getNow().getTime();
 
     if (msCLT > 0) {
+      const limiteStr = new Date(fromTime.getTime() + limiteCLT)
+        .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      // SW — aparece na tela bloqueada
+      scheduleSwNotif(msCLT, '⚖️ Limite CLT em 10 min!', 'Retorne até ' + limiteStr + ' — máx. 2h de intervalo.', 'clt-aviso', true);
+      scheduleSwNotif(msCLTmax > 0 ? msCLTmax : 0, '🚨 2h de almoço atingido!', 'Retorne imediatamente — limite CLT ultrapassado.', 'clt-limite', true);
+
       window.timerCLT = setTimeout(() => {
-        const limiteStr = new Date(fromTime.getTime() + limiteCLT)
-          .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         showBanner('⚖️', 'Atenção! Limite CLT em 10 min', 'O intervalo máximo é 2h. Retorne até ' + limiteStr);
         playAlertSound();
         sendNativeNotif('⚖️ Limite de almoço CLT!', 'Retorne até ' + limiteStr + ' (máx. 2h de intervalo).');
@@ -2798,19 +2775,14 @@ function calcTotalMs(records) {
 
 // ── INIT ──
 function init() {
-  // Restore today's records to UI
+  // Restaura chips de status
   Object.keys(todayRecords).filter(k => k !== '_date').forEach(type => {
     const timeStr = todayRecords[type];
-    document.getElementById('time-' + type).textContent = timeStr;
-    const chip = document.getElementById(TYPES[type].chip);
-    chip.classList.add('active');
-    chip.innerHTML = `<span class="chip-dot"></span><span>${TYPES[type].label}</span><span class="chip-time">${timeStr}</span>`;
-    // Esmaecer botão já registrado
-    const btn = document.getElementById('btn-' + type);
-    btn.style.opacity = '0.4';
-    btn.style.filter = 'grayscale(0.6)';
-    btn.style.cursor = 'not-allowed';
-    btn.style.pointerEvents = 'none';
+    const chipEl = document.getElementById('chip-' + type);
+    if (chipEl) {
+      chipEl.classList.add('active');
+      chipEl.innerHTML = `<span class="chip-dot"></span><span>${TYPES[type].label}</span><span class="chip-time">${timeStr}</span>`;
+    }
   });
 
   // Restaura prévias
@@ -2820,10 +2792,125 @@ function init() {
   if (todayRecords['almoco-volta'] && !todayRecords['saida']) updatePreviewChips('almoco-volta', todayRecords['almoco-volta']);
 
   renderHistory();
+  renderDayRecords();
 }
 
 
-// ── EXPORTAÇÃO CSV ──
+// ── BOTÃO SEQUENCIAL ──
+const SEQ = [
+  { type: 'entrada',      icon: '🟢', label: 'REGISTRAR ENTRADA',       color: 'var(--green)',  borderColor: 'var(--green)',  glow: 'var(--green-glow)'  },
+  { type: 'almoco-ida',   icon: '🍽️', label: 'REGISTRAR ALMOÇO SAÍDA',  color: 'var(--orange)', borderColor: 'var(--orange)', glow: 'var(--orange-glow)' },
+  { type: 'almoco-volta', icon: '↩️', label: 'REGISTRAR ALMOÇO VOLTA',  color: 'var(--accent)', borderColor: 'var(--accent)', glow: 'var(--accent-glow)' },
+  { type: 'saida',        icon: '🔴', label: 'REGISTRAR SAÍDA',          color: 'var(--red)',    borderColor: 'var(--red)',    glow: 'var(--red-glow)'    },
+];
+
+const RECORD_LABELS = {
+  'entrada': 'Entrada', 'almoco-ida': 'Almoço Saída',
+  'almoco-volta': 'Almoço Volta', 'saida': 'Saída'
+};
+const RECORD_COLORS = {
+  'entrada': 'var(--green)', 'almoco-ida': 'var(--orange)',
+  'almoco-volta': 'var(--accent)', 'saida': 'var(--red)'
+};
+const RECORD_ICONS = {
+  'entrada': '🟢', 'almoco-ida': '🍽️',
+  'almoco-volta': '↩️', 'saida': '🔴'
+};
+
+function getNextType() {
+  const carga = settings.cargaHoraria || settings.jornada;
+  for (const s of SEQ) {
+    if (todayRecords[s.type]) continue;
+    // Para 6h: pula almoço (a menos que já tenha registrado almoco-ida manualmente)
+    if (carga === 6 && (s.type === 'almoco-ida' || s.type === 'almoco-volta')) {
+      if (!todayRecords['almoco-ida']) continue; // pula se não iniciou almoço
+      if (s.type === 'almoco-volta' && !todayRecords['almoco-ida']) continue;
+    }
+    return s;
+  }
+  return null;
+}
+
+function registerNext() {
+  const next = getNextType();
+  if (!next) return;
+  register(next.type);
+}
+
+function updateMainBtn() {
+  const btn   = document.getElementById('mainActionBtn');
+  const icon  = document.getElementById('mainActionIcon');
+  const label = document.getElementById('mainActionLabel');
+  const sub   = document.getElementById('mainActionSub');
+  if (!btn) return;
+
+  const next = getNextType();
+
+  if (!next) {
+    // Tudo registrado
+    btn.style.borderColor = 'var(--border)';
+    btn.style.background  = 'var(--surface)';
+    btn.style.cursor      = 'not-allowed';
+    btn.style.opacity     = '0.5';
+    btn.onclick           = null;
+    icon.textContent      = '🌙';
+    label.textContent     = 'EXPEDIENTE ENCERRADO';
+    sub.textContent       = 'Todos os registros realizados';
+    sub.style.color       = 'var(--muted)';
+    return;
+  }
+
+  btn.style.borderColor = next.borderColor;
+  btn.style.background  = next.glow;
+  btn.style.opacity     = '1';
+  btn.style.cursor      = 'pointer';
+  btn.onclick           = registerNext;
+  icon.textContent      = next.icon;
+  label.textContent     = next.label;
+
+  // Sub — mostra prévia se disponível
+  const chipId = 'chip-' + next.type;
+  const chip = document.getElementById(chipId);
+  const chipTime = chip ? chip.querySelector('.chip-time') : null;
+  if (chipTime && chipTime.textContent.includes('prev.')) {
+    sub.textContent   = chipTime.textContent;
+    sub.style.color   = 'var(--accent)';
+  } else {
+    sub.textContent   = 'Toque para registrar';
+    sub.style.color   = 'var(--muted)';
+  }
+}
+
+function renderDayRecords() {
+  const container = document.getElementById('dayRecords');
+  if (!container) return;
+
+  const order = ['entrada', 'almoco-ida', 'almoco-volta', 'saida'];
+  const done  = order.filter(k => todayRecords[k]);
+
+  if (done.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = done.map(k => `
+    <div style="
+      display:flex; align-items:center; gap:12px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:14px; padding:12px 16px;
+    ">
+      <span style="font-size:18px;">${RECORD_ICONS[k]}</span>
+      <span style="flex:1; font-family:'Outfit',sans-serif; font-size:13px;
+        font-weight:500; color:var(--muted);">${RECORD_LABELS[k]}</span>
+      <span style="font-family:'Outfit',sans-serif; font-size:18px;
+        font-weight:700; color:var(--text);">${todayRecords[k]}</span>
+      <span style="width:8px;height:8px;border-radius:50%;
+        background:${RECORD_COLORS[k]};flex-shrink:0;"></span>
+    </div>
+  `).join('');
+
+  updateMainBtn();
+}
 function exportCSV() {
   const ORDER = ['entrada', 'almoco-ida', 'almoco-volta', 'saida'];
   const LABELS = { 'entrada': 'Entrada', 'almoco-ida': 'Almoço Saída', 'almoco-volta': 'Almoço Volta', 'saida': 'Saída' };
